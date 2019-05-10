@@ -1,7 +1,5 @@
 ## XinFin Governance DApp
 
-This is Governance Dapp for XinFin. Full-Node can apply to become a candidate for masternode. Coin Holder can vote for candidates to become masternodes. See the detail from technical Whitepaper: https://docs.xinfin.network/whitepaper/](https://docs.xinfin.network/whitepaper/)
-
 ## Requirements
 - NodeJS (If you get EACCES permission issue, please see: https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally)
 - MongoDB
@@ -31,7 +29,7 @@ cp config/default.json config/local.json
 npm install
 
 ```
-Note: before deploying to XinFin Apothem, make sure you have XDC in the wallet. If not, get free at [https://faucet.apothem.network](https://faucet.apothem.network)
+Note: before deploying to XinFin Apothem, make sure you have XDC in the wallet. If not, get free at http://apothem.network/#getTestXDC
 
 ## Enable https
 ``` npm run dev-https```
