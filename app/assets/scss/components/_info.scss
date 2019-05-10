@@ -1,0 +1,45 @@
+.XDC-info {
+    margin-bottom: 30px;
+
+    .XDC-info__title {
+        margin-bottom: 5px;
+    }
+
+    .XDC-info__icon {
+        font-size: 6px;
+        vertical-align: middle;
+        color: #6e92f7;
+        margin-right: 6px;
+        max-width: 6px;
+
+        &.tm-arrow-up {
+            font-size: 10px;
+        }
+    }
+
+    .XDC-info__text {
+        font-size: 14px;
+        display: inline-block;
+        vertical-align: middle;
+        text-transform: capitalize;
+    }
+
+    .XDC-info__description {
+        font-size: 16px;
+        color: #938fb5;
+        display: inline-block;
+        margin-left: 16px;
+        margin-bottom: 0;
+    }
+
+    &--big {
+
+        .XDC-info__icon {
+            font-size: 13px;
+        }
+
+        .XDC-info__description {
+            margin-left: 20px;
+        }
+    }
+}

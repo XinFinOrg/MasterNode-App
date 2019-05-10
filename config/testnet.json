@@ -1,0 +1,14 @@
+{
+    "blockchain": {
+        "rpc": "https://testnet.xinfin.network",
+        "ws": "wss://testnet.xinfin.network/ws",
+        "networkId": 89
+    },
+    "explorerUrl": "https://scan.testnet.xinfin.network",
+    "xdcscanUrl": "http://xdcscan_server:3333",
+    "baseUrl": "https://master.testnet.xinfin.network/",
+    "db": {
+        "uri" : "mongodb://masternode-app_db:27017/governance"
+    },
+    "grafanaUrl": "https://grafana.testnet.xinfin.network"
+}

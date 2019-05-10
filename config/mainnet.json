@@ -1,0 +1,19 @@
+{
+    "logs": {
+        "level": "info"
+    },
+    "blockchain": {
+        "rpc": "https://rpc.xinfin.network",
+        "ws": "wss://ws.xinfin.network",
+        "networkId": 88
+    },
+    "explorerUrl": "https://scan.xinfin.network",
+    "xdcscanUrl": "http://xdcscan_server:3333",
+    "baseUrl": "https://master.xinfin.network/",
+    "db": {
+        "uri" : "mongodb://masternode-app_db:27017/governance"
+    },
+    "grafanaUrl": "https://grafana.xinfin.network",
+    "grafanaApiKey": "eyJrIjoiTlJZNzVwQ3ZQVW4wa01xY1pVODluU1V2NWJxV2VYS20iLCJuIjoidG9tb21hc3RlciIsImlkIjoxfQ==",
+    "GA": "UA-124597188-4"
+}
