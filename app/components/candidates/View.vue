@@ -200,7 +200,7 @@
                 <div
                     class="buttons text-right">
                     <b-button
-                        v-if="candidate.owner === account && candidate.status !== 'RESIGNED'"
+                        v-if="'0x' + candidate.owner.substring(3) === account && candidate.status !== 'RESIGNED'"
                         :to="`/resign/${candidate.address}`"
                         variant="secondary">Resign</b-button>
 
@@ -665,7 +665,7 @@ export default {
                             console.log('got an error', a)
                         }
                     })
-                    self.KYC.status = await this.getKYCStatus(address)
+                    self.KYC.status = await this.getKYCStatus('0x' + address.substring(3))
                     if (self.KYC.status) self.KYC.url = `http://0.0.0.0:8081/ipfs/${self.KYC.status}`
                     if (self.account) {
                         try {

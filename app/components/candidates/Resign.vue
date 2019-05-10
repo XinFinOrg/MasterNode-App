@@ -19,7 +19,7 @@
                         </li>
                     </ul>
                     <b-card-footer class="text-right">
-                        <p v-if="owner !== account">
+                        <p v-if="'0x' + owner.substring(3) !== account">
                             <i class="tm-notice"/>
                             You are not an owner of this candidate
                         </p>
@@ -31,8 +31,8 @@
                             @click="resignActive = true;">Resign</b-button> -->
                         <b-button
                             v-b-modal.confirmResignModal
-                            v-if="owner === account"
-                            :disabled="loading || owner !== account"
+                            v-if="'0x' + owner.substring(3) === account"
+                            :disabled="loading || '0x' + owner.substring(3) !== account"
                             variant="secondary"
                             @click="resignActive = true;">Resign</b-button>
                     </b-card-footer>
@@ -163,7 +163,8 @@ export default {
                     let signature = await self.signTransaction(dataTx)
                     rs = await self.sendSignedTransaction(dataTx, signature)
                 } else {
-                    rs = await contract.resign(coinbase, txParams)
+                    rs = await contract.resign('0x' + coinbase.substring(3), txParams)
+                    console.log('coinbase2>>', rs)
                 }
                 let toastMessage = rs.tx ? 'You have successfully resigned!'
                     : 'An error occurred while retiring, please try again'
