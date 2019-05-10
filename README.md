@@ -29,10 +29,9 @@ cp config/default.json config/local.json
 ## Install
 ```
 npm install
-truffle deploy --reset --network XDC # only use this command if you want to connect to a private network
-cp abis/*json build/contracts/
+
 ```
-Note: before deploying to XinFin testnet, make sure you have XDC in the wallet. If not, get free at [https://faucet.xinfin.network](https://faucet.testnet.xinfin.network)
+Note: before deploying to XinFin Apothem, make sure you have XDC in the wallet. If not, get free at [https://faucet.apothem.network](https://faucet.apothem.network)
 
 ## Enable https
 ``` npm run dev-https```
@@ -43,24 +42,4 @@ Note: before deploying to XinFin testnet, make sure you have XDC in the wallet. 
 npm run dev
 ```
 The site will run at [`http://localhost:3000`](http://localhost:3000)
-
-## Test
-```
-npm run test
-```
-Or run command
-```
-truffle test
-``` 
-
-
-
-#### Test a special file
-```
-npm run test path_to_file/file.js
-```
-Or run command
-```
-truffle test path_to_file/file.js
-```
 
