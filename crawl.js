@@ -96,7 +96,7 @@ async function watchValidator () {
                     // fire notification
                     const voters = await db.Voter.find({
                         candidate: candidate,
-                        smartContractAddress: config.get('blockchain.validtorAddress'),
+                        smartContractAddress: config.get('blockchain.validatorAddress'),
                         capacityNumber: { $gt: 0 }
                     })
                     if (voters && voters.length > 0) {
