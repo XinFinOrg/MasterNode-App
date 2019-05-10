@@ -217,15 +217,16 @@ async function getCurrentCandidates () {
         candidates = _.uniqBy(_.concat(candidates, candidatesInDb), (it) => {
             return it.toLowerCase()
         })
-
         let map = candidates.map(async (candidate) => {
+            if (candidate.substring(0, 3) === 'xdc') {
+                candidate = '0x' + candidate.substring(3)
+            }
             candidate = (candidate || '').toLowerCase()
             let voters = await validator.methods.getVoters(candidate).call()
             let m = voters.map(v => {
                 v = (v || '').toLowerCase()
                 return updateVoterCap(candidate, v)
             })
-
             await Promise.all(m)
             return updateCandidateInfo(candidate)
         })
