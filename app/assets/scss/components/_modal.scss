@@ -1,0 +1,98 @@
+.XDC-modal {
+
+    .modal-content {
+        border: none;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .modal-header {
+        border: none;
+        padding: 0;
+        margin-bottom: 20px;
+
+        .close {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            margin: -5px;
+            font-size: 0;
+
+            &:before {
+                content: '\e910';
+                font-size: 20px;
+        
+                @extend %tm-icon;
+            }
+        }
+
+        @include media-breakpoint-up(lg) {
+            margin-bottom: 40px;
+        }
+    }
+
+    .modal-body {
+        padding: 0;
+    }
+
+    .modal-footer {
+        border: none;
+        padding: 0;
+        margin-top: 20px;
+    
+        .btn {
+          min-width: 120px;
+        }
+      }
+}
+
+.XDC-modal-light {
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal {
+        background: #FFFFFF;
+        box-shadow: 2px 2px 20px 1px;
+        display: flex;
+        flex-direction: column;
+        width: 90%;
+        height: 70%;
+        margin: 10% 5% 20% 5%
+  }
+
+    .modal-header,
+    .modal-footer {
+        padding: 15px;
+        display: flex;
+        font-size: 18pt;
+        font-weight: bold
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #eeeeee;
+        color: #000000;
+        justify-content: space-between;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #eeeeee;
+        justify-content: flex-end;
+    }
+
+    .modal-body {
+        position: relative;
+        padding: 20px 10px;
+        color: #4AAE9B;
+        font-size: 16pt;
+        overflow-y: auto;
+    }
+}

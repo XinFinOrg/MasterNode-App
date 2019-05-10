@@ -1,0 +1,11 @@
+*.pem
+.*.sw*
+node_modules
+.vscode/
+.eslintcache
+.idea/
+.node-xmlhttprequest*
+.env
+coverage
+coverage.json
+.DS_Store

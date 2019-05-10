@@ -1,0 +1,21 @@
+{
+  "server": {
+    "host": "SERVER_HOST",
+    "port": "SERVER_PORT"
+  },
+  "blockchain": {
+      "rpc": "BC_RPC",
+      "ws": "BC_WS",
+      "networkId": "BC_NETWORK_ID"
+  },
+  "explorerUrl": "XDCSCAN_SITE_URL",
+  "grafanaUrl": "GRAFANA_URL",
+  "xdcscanUrl": "XDCSCAN_API_URL",
+  "baseUrl": "BASE_URL",
+  "db": {
+    "uri": "DB_URI"
+  },
+  "redis": {
+    "host": "REDIS_HOST"
+  }
+}
