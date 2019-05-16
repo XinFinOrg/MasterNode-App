@@ -7,13 +7,12 @@
             <b-card
                 :class="'col-12 col-md-8 col-lg-6 XDC-card XDC-card--lighter p-0'
                 + (loading ? ' XDC-loading' : '')">
-                <h4 class="color-white XDC-card__title XDC-card__title--big">Become a Candidate</h4>
+                <h4 class="color-white XDC-card__title XDC-card__title--big">Become a MasterNode</h4>
                 <template v-if="!KYC.status">
                     <ul class="XDC-list list-unstyled">
                         <li class="XDC-list__item">
                             <!-- <i class="tm-XDC XDC-list__icon" /> -->
-                            <p class="XDC-list__text">Know Your Customer (KYC) is the process of a verifying the identity. The significance of KYC is becoming increasingly important for Institution and regulators.
-                            <br>Note: Public Network will share your KYC information with general Public in order to verify node identity.</p>
+                            <p class="XDC-list__text">Attach Scan copy of  "KYC Certification." (.pdf file extension) <br>Format Sample (may vary depending on country)<br>Who can Certified?  <br>The person giving the certification Must<br><br>This KYC document needs to be certified by an appropriate Authority like:<br><br>A qualified lawyer or attorney, registered with the relevant national professional body<br>A notary public, a member of the judiciary, a senior civil servant or a serving police officer<br>A chartered secretary, registered with the Institute of Chartered Secretaries<br>An Embassy, consulate or high commission officer in the country of issue Certification Requirements<br><br>The person giving the certification:<br>Must use a firm's’ stamp or, if not available, provide an accompanying letter on company letterhead confirming which documents have been certified.<br>Must provide the certification (including the firms stamp if used) directly on the copy of each document including-“Certified to be a true copy of the original seen by me”<br><br>Print his/her name clearly in capitals-Sign and date the copy document<br>Clearly indicate his/her position or capacity<br>Provide the name and address of the firm that they are employed by<br>Provide the name of the institution that they are a member of together with their membership number<br><br>Documents that have been certified on the reverse of the document’s copy are not acceptable. The certifiers need to certify the pages that contain the copies of your documents.<br>Note: Public Network will share your KYC  certification with the general Public in order to verify node identity..</p>
                         </li>
                         <li class="XDC-list__item">
                             <i class="tm-lock XDC-list__icon" />
@@ -70,7 +69,7 @@
                         novalidate
                         @submit.prevent="validate()">
                         <b-form-group
-                            :description="`How much XDCE do you want to deposit? TX fee: ${txFee} XDC`"
+                            :description="`How much XDC do you want to deposit? TX fee: ${txFee} XDC`"
                             label="Vote"
                             label-for="apply-value">
                             <b-input-group>
