@@ -145,6 +145,23 @@
                             <span>KYC</span>
                         </div>
                     </li>
+                    <li
+                        v-if="KYCStatus"
+                        class="XDC-list__item">
+                        <i class="tm-XDC XDC-list__icon" />
+                        <div class="XDC-list__text">
+                            <p class="color-white mb-0">
+                                <span class="text-muted">
+                                    <a
+                                        :href="`http://0.0.0.0:8081/ipfs/${KYCStatus}`"
+                                        target="_blank">
+                                        Check here
+                                    </a>
+                                </span>
+                            </p>
+                            <span>KYC</span>
+                        </div>
+                    </li>
                 </ul>
             </b-card>
             <b-card
