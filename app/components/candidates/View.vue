@@ -665,6 +665,7 @@ export default {
                             console.log('got an error', a)
                         }
                     })
+                    console.log(address, 'address')
                     self.KYC.status = await this.getKYCStatus('0x' + address.substring(3))
                     if (self.KYC.status) self.KYC.url = `http://0.0.0.0:8081/ipfs/${self.KYC.status}`
                     if (self.account) {
@@ -875,13 +876,16 @@ export default {
         },
         async getKYCStatus (address) {
             const contract = await this.getXDCValidatorInstance()
-            const isHashFound = await contract.getHashCount.call(address)
-            if (new BigNumber(isHashFound).toNumber()) {
-                const getKYC = await contract.getLatestKYC.call(address)
-                // const KYCString = await contract.KYCString.call(address)
-                console.log(getKYC)
-                return getKYC
-            }
+            const getKYC = await contract.getLatestKYC.call(address)
+            console.log(getKYC)
+            return getKYC
+            // const KYCString = await contract.KYCString.call(address)
+            // const isHashFound = await contract.getHashCount.call(address)
+            // console.log('hash found ??>>>>>>>>>>>>>>>>>>>>>>', new BigNumber(isHashFound).toNumber())
+
+            // if (new BigNumber(isHashFound).toNumber()) {
+
+            // }
         }
     }
 }
