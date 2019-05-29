@@ -17,7 +17,10 @@
         margin-right: 20px;
         color: $color-text-muted;
     }
-
+    &__textMargin {
+        flex: 1;
+        overflow: hidden;
+    }
     &__text {
         flex: 1;
         overflow: hidden;
