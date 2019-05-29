@@ -12,7 +12,31 @@
                     <ul class="XDC-list list-unstyled">
                         <li class="XDC-list__item">
                             <!-- <i class="tm-XDC XDC-list__icon" /> -->
-                            <p class="XDC-list__text">Attach Scan copy of  "KYC Certification." (.pdf file extension) <br>Format Sample (may vary depending on country)<br>Who can Certified?  <br>The person giving the certification Must<br><br>This KYC document needs to be certified by an appropriate Authority like:<br><br>A qualified lawyer or attorney, registered with the relevant national professional body<br>A notary public, a member of the judiciary, a senior civil servant or a serving police officer<br>A chartered secretary, registered with the Institute of Chartered Secretaries<br>An Embassy, consulate or high commission officer in the country of issue Certification Requirements<br><br>The person giving the certification:<br>Must use a firm's’ stamp or, if not available, provide an accompanying letter on company letterhead confirming which documents have been certified.<br>Must provide the certification (including the firms stamp if used) directly on the copy of each document including-“Certified to be a true copy of the original seen by me”<br><br>Print his/her name clearly in capitals-Sign and date the copy document<br>Clearly indicate his/her position or capacity<br>Provide the name and address of the firm that they are employed by<br>Provide the name of the institution that they are a member of together with their membership number<br><br>Documents that have been certified on the reverse of the document’s copy are not acceptable. The certifiers need to certify the pages that contain the copies of your documents.<br>Note: Public Network will share your KYC  certification with the general Public in order to verify node identity..</p>
+                            <div class="XDC-list__text">
+                                <p class="XDC-list__textMargin">Attach Scan copy of  "KYC Certification." (.pdf file extension) </p>
+                                <p class="XDC-list__textMargin">Format Sample (may vary depending on country)</p>
+                                <p class="XDC-list__textMargin">Who can Certified?  </p>
+                                <p class="XDC-list__textMargin">person giving the certification Must</p>
+                                <br><br>
+                                <h3 class="">This KYC document needs to be certified by an appropriate Authority like:</h3><br>
+                                <p class="XDC-list__textMargin">A qualified lawyer or attorney, registered with the relevant national professional body
+                                </p> 
+                                <p class="XDC-list__textMargin">A notary public, a member of the judiciary, a senior civil servant or a serving police officer</p>
+                                <p class="XDC-list__textMargin">A chartered secretary, registered with the Institute of Chartered Secretaries</p> 
+                                <p class="XDC-list__textMargin">An Embassy, consulate or high commission officer in the country of issue Certification Requirements</p> <br>
+                                <h3>The person giving the certification:</h3> <br>
+                                <p class="XDC-list__textMargin">Must use a firm's’ stamp or, if not available, provide an accompanying letter on company letterhead confirming which documents have been certified.</p>
+                                <p class="XDC-list__textMargin">Must provide the certification (including the firms stamp if used) directly on the copy of each document including-“Certified to be a true copy of the original seen by me”</p><br>
+                                <ul>
+                                    <li><p class="XDC-list__textMargin">Print his/her name clearly in capitals-Sign and date the copy document</p></li>
+                                    <li><p class="XDC-list__textMargin">Clearly indicate his/her position or capacity</p></li> 
+                                    <li><p class="XDC-list__textMargin">Provide the name and address of the firm that they are employed by</p></li> 
+                                    <li><p class="XDC-list__textMargin">Provide the name of the institution that they are a member of together with their membership number</p></li>
+                                </ul>
+                                <br>
+                                <p class="XDC-list__textMargin">Documents that have been certified on the reverse of the document’s copy are not acceptable. The certifiers need to certify the pages that contain the copies of your documents.</p>
+                                <p class="XDC-list__textMargin">Note: Public Network will share your KYC  certification with the general Public in order to verify node identity.</p>
+                            </div>
                         </li>
                         <li class="XDC-list__item">
                             <i class="tm-lock XDC-list__icon" />
