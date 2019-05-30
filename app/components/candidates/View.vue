@@ -667,7 +667,7 @@ export default {
                     })
                     console.log(address, 'address')
                     self.KYC.status = await this.getKYCStatus('0x' + address.substring(3))
-                    if (self.KYC.status) self.KYC.url = `http://0.0.0.0:8081/ipfs/${self.KYC.status}`
+                    if (self.KYC.status) self.KYC.url = `https://kycdocs.xinfin.network/ipfs/${self.KYC.status}`
                     if (self.account) {
                         try {
                             let contract = await self.getXDCValidatorInstance()
