@@ -153,7 +153,7 @@
                             <p class="color-white mb-0">
                                 <span class="text-muted">
                                     <a
-                                        :href="`http://0.0.0.0:8081/ipfs/${KYCStatus}`"
+                                        :href="`https://kycdocs.xinfin.network/${KYCStatus}`"
                                         target="_blank">
                                         Check here
                                     </a>
