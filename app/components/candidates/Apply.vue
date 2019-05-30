@@ -20,17 +20,17 @@
                                 <br><br>
                                 <h3 class="">This KYC document needs to be certified by an appropriate Authority like:</h3><br>
                                 <p class="XDC-list__textMargin">A qualified lawyer or attorney, registered with the relevant national professional body
-                                </p> 
+                                </p>
                                 <p class="XDC-list__textMargin">A notary public, a member of the judiciary, a senior civil servant or a serving police officer</p>
-                                <p class="XDC-list__textMargin">A chartered secretary, registered with the Institute of Chartered Secretaries</p> 
+                                <p class="XDC-list__textMargin">A chartered secretary, registered with the Institute of Chartered Secretaries</p>
                                 <p class="XDC-list__textMargin">An Embassy, consulate or high commission officer in the country of issue Certification Requirements</p> <br>
                                 <h3>The person giving the certification:</h3> <br>
                                 <p class="XDC-list__textMargin">Must use a firm's’ stamp or, if not available, provide an accompanying letter on company letterhead confirming which documents have been certified.</p>
                                 <p class="XDC-list__textMargin">Must provide the certification (including the firms stamp if used) directly on the copy of each document including-“Certified to be a true copy of the original seen by me”</p><br>
                                 <ul>
                                     <li><p class="XDC-list__textMargin">Print his/her name clearly in capitals-Sign and date the copy document</p></li>
-                                    <li><p class="XDC-list__textMargin">Clearly indicate his/her position or capacity</p></li> 
-                                    <li><p class="XDC-list__textMargin">Provide the name and address of the firm that they are employed by</p></li> 
+                                    <li><p class="XDC-list__textMargin">Clearly indicate his/her position or capacity</p></li>
+                                    <li><p class="XDC-list__textMargin">Provide the name and address of the firm that they are employed by</p></li>
                                     <li><p class="XDC-list__textMargin">Provide the name of the institution that they are a member of together with their membership number</p></li>
                                 </ul>
                                 <br>
