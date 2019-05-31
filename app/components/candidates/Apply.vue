@@ -7,13 +7,13 @@
             <b-card
                 :class="'col-12 col-md-8 col-lg-6 XDC-card XDC-card--lighter p-0'
                 + (loading ? ' XDC-loading' : '')">
-                <h4 class="color-white XDC-card__title XDC-card__title--big">Become a MasterNode</h4>
+                <h4 class="color-white XDC-card__title XDC-card__title--big"><strong>Become a MasterNode</strong></h4>
                 <template v-if="!KYC.status">
                     <ul class="XDC-list list-unstyled">
                         <li class="XDC-list__item">
                             <!-- <i class="tm-XDC XDC-list__icon" /> -->
                             <div class="XDC-list__text">
-                                <p class="XDC-list__textMargin">Attach Scan copy of  "KYC Certification." (.pdf file extension) </p>
+                                <!-- <p class="XDC-list__textMargin">Attach Scan copy of  "KYC Certification." (.pdf file extension) </p>
                                 <p class="XDC-list__textMargin">Format Sample (may vary depending on country)</p>
                                 <p class="XDC-list__textMargin">Who can Certified?  </p>
                                 <p class="XDC-list__textMargin">person giving the certification Must</p>
@@ -35,13 +35,19 @@
                                 </ul>
                                 <br>
                                 <p class="XDC-list__textMargin">Documents that have been certified on the reverse of the document’s copy are not acceptable. The certifiers need to certify the pages that contain the copies of your documents.</p>
-                                <p class="XDC-list__textMargin">Note: Public Network will share your KYC  certification with the general Public in order to verify node identity.</p>
+                                <p class="XDC-list__textMargin">Note: Public Network will share your KYC  certification with the general Public in order to verify node identity.</p> -->
+                                <p class="graf graf--p graf-after--figure"><strong class="markup--strong markup--p-strong"> Become a MasterNode </strong>and upload the <strong class="markup--strong markup--p-strong">Know Your Community (KYC) certificate</strong> in PDF format.</p>
+                                <p class="graf graf--p graf-after--p">This KYC certificate needs to be signed by one of the following personnel:</p>
+                                <ul class="postList"><li>Company Secretary,</li><li>A Notary Public,</li><li>Chartered Secretary,</li><li >Consulate, or</li><li>A lawyer with Seal.</li></ul>
+                                <p class="graf graf--p graf-after--li">For <strong class="markup--strong markup--p-strong">INDIVIDUAL format</strong>, <a href="https://docs.google.com/document/d/1Us9chjXEDYrDOpfuwWITxaQOSEYxYIpJpwWuYK0TyXY" ><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
+                                <p>For <strong class="markup--strong markup--p-strong">ORGANIZATION format</strong>, <a href="https://docs.google.com/document/d/1eyjFp3DXhrpLscngELocmXFwJ_Y8H9si6n8Z2SLADhg"><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
+                                <p><em class="markup--em markup--p-em">Note: It’s mandatory to upload the certificate in a </em><strong class="markup--strong markup--p-strong"><em class="markup--em markup--p-em">PDF format</em></strong><em class="markup--em markup--p-em">.</em></p>
                             </div>
                         </li>
-                        <li class="XDC-list__item">
+                        <!-- <li class="XDC-list__item">
                             <i class="tm-lock XDC-list__icon" />
                             <span class="XDC-list__text">Create PDF file with mention Certify KYC document.</span>
-                        </li>
+                        </li> -->
                         <!-- <li class="XDC-list__item">
                             <i class="tm-arrow-up XDC-list__icon" />
                             <span class="XDC-list__text">
@@ -81,11 +87,6 @@
                             <i class="tm-lock XDC-list__icon" />
                             <span class="XDC-list__text">Your deposit will be locked</span>
                         </li>
-                        <li class="XDC-list__item">
-                            <i class="tm-arrow-up XDC-list__icon" />
-                            <span class="XDC-list__text">
-                                Coin holders are able to vote for you to become a masternode</span>
-                        </li>
                     </ul>
 
                     <b-form
@@ -94,7 +95,7 @@
                         @submit.prevent="validate()">
                         <b-form-group
                             :description="`How much XDC do you want to deposit? TX fee: ${txFee} XDC`"
-                            label="Vote"
+                            label="Stake"
                             label-for="apply-value">
                             <b-input-group>
                                 <number-input

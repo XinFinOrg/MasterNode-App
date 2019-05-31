@@ -37,7 +37,7 @@
                             v-else
                             id="btn-become-candidate"
                             to="/apply"
-                            variant="primary">Become a candidate</b-button>
+                            variant="primary">Become a MasterNode</b-button>
                         <!-- <a
                             target="_blank"
                             href="https://xinfin.network/#webWallet"><i class=""/> New to XinFin ? Create an Wallet</a> -->
