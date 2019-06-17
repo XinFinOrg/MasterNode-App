@@ -13,16 +13,6 @@
             @keydown.enter="blur"
             @keydown.up.prevent="increment"
             @keydown.down.prevent="decrement">
-        <button
-            :disabled="decrementDisabled"
-            class="decrement-button"
-            type="button"
-            @click="decrement">−</button>
-        <button
-            :disabled="incrementDisabled"
-            class="increment-button"
-            type="button"
-            @click="increment">+</button>
     </div>
 </template>
 <script>
@@ -56,7 +46,7 @@ export default {
             currentValue: (this.value) ? this.value.replace(/,/g, '') : '',
             decrementDisabled: false,
             incrementDisabled: false,
-            inputDisabled: false
+            inputDisabled: true
         }
     },
 
