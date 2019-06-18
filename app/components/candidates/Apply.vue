@@ -392,6 +392,9 @@ export default {
                     : 'An error occurred while applying, please try again'
                 self.$toasted.show(toastMessage)
 
+                if (coinbase.substring(0, 2) === '0x') {
+                    coinbase = 'xdc' + coinbase.substring(2)
+                }
                 setTimeout(() => {
                     self.loading = false
                     if (rs.tx) {
