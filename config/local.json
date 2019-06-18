@@ -4,12 +4,12 @@
     "port": 3001
   },
   "blockchain": {
-      "rpc": "http://rpc.apothem.network",
-      "ws": "ws://ws.apothem.network:8555",
-      "networkId": 51,
+      "rpc": "https://rpc.xinfin.network",
+      "ws": "ws://ws.xinfin.network:8555",
+      "networkId": 50,
       "epoch": 900,
       "blockTime": 2,
-      "reward": 10,
+      "reward": 5000,
       "voterRewardRate": 0,
       "masternodeRewardRate": 90,
       "foundationRewardRate": 10,
@@ -33,7 +33,7 @@
     "maxValidatorNumber": 2,
     "candidateWithdrawDelay": 100,
     "voterWithdrawDelay": 100,
-    "epochNumber": 9000
+    "epochNumber": 900
   },
   "GA": "UA-124427827-2"
 }
