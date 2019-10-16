@@ -4,8 +4,8 @@
     "port": 3001
   },
   "blockchain": {
-      "rpc": "http://localhost:8545",
-      "ws": "ws://localhost:8555",
+      "rpc": "https://rpc.xinfin.network",
+      "ws": "ws://ws.xinfin.network:8555",
       "networkId": 51,
       "epoch": 900,
       "blockTime": 2,
