@@ -15,7 +15,7 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
     fs.mkdirSync(path.join(__dirname, '../tmp/'))
 }
 
-router.get('/addKYC', async function (req, res, next) {
+router.post('/addKYC', async function (req, res, next) {
     console.log(req.files)
     console.log('File Name : ', req.files.filename)
     let imageFile = req.files.filename
