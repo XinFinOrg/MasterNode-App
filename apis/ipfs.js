@@ -20,7 +20,7 @@ router.post('/addKYC', async function (req, res, next) {
     console.log('File Name : ', req.files.filename)
     let imageFile = req.files.filename
 
-    xinFinClient.add(imageFile, async (err, ipfsHash) => {
+    xinFinClient.add(imageFile.data, async (err, ipfsHash) => {
          if (err != null) {
             // error occured, log out the error
             console.error('Some error occured while adding KYC at /addKYC: ', err)
