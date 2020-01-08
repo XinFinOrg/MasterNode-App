@@ -55,6 +55,7 @@
         "express-validator": "^5.1.2",
         "highcharts": "^6.1.1",
         "highcharts-vue": "^1.0.4",
+        "ipfs-http-client": "^40.1.0",
         "js-yaml": "^3.13.1",
         "kue": "^0.11.6",
         "lerna": "^3.14.1",
