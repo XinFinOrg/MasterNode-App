@@ -5,7 +5,7 @@ const router = express.Router()
 const db = require('../models/mongodb')
 const uuidv4 = require('uuid/v4')
 const config = require('config')
-const web3 = require('../models/blockchain/web3rpc')
+const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const EthereumTx = require('ethereumjs-tx')
 const BigNumber = require('bignumber.js')
 const _ = require('lodash')
@@ -15,7 +15,8 @@ const urljoin = require('url-join')
 router.get('/:voter/candidates', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -49,7 +50,7 @@ router.get('/:voter/candidates', [
                 $match: {
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     voter: (req.params.voter || '').toLowerCase(),
-                    capacityNumber: { $ne: 0 }
+                    capacityNumber: { $gt: 0 }
                 }
             },
             {
@@ -70,17 +71,18 @@ router.get('/:voter/candidates', [
             let it = (_.findLast(candidates, (c) => {
                 return (c.candidate === v.candidate)
             }) || {})
-            v.candidateName = it.name || 'XinFin MasterNode'
+            v.candidateName = it.name || 'Anonymous'
             v.totalCapacity = it.capacity
             v.status = it.status
             v.owner = it.owner
             return _.pick(v, ['candidate', 'capacity', 'capacityNumber', 'totalCapacity',
                 'candidateName', 'status', 'owner'])
         })
+        const totalVoted = await totalCandidates
         return res.json({
             items: voters,
             total: await total,
-            totalVoted: (await totalCandidates)[0].totalVoted
+            totalVoted: totalVoted.length > 0 ? totalVoted[0].totalVoted : 0
         })
     } catch (e) {
         return next(e)
@@ -90,7 +92,8 @@ router.get('/:voter/candidates', [
 router.get('/:voter/rewards', [
     query('limit')
         .isInt({ min: 0, max: 100 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     try {
         const errors = validationResult(req)
@@ -187,7 +190,8 @@ router.post('/generateQR', [
 })
 
 router.post('/verifyTx', [
-    query('id').exists().withMessage('is is required'),
+    query('id').isLength({ min: 1 }).exists().withMessage('is is required')
+        .contains('-').withMessage('wrong id format'),
     check('action').isLength({ min: 1 }).exists().withMessage('action is required'),
     check('signer').isLength({ min: 1 }).exists().withMessage('signer is required'),
     check('rawTx').isLength({ min: 1 }).exists().withMessage('rawTx is required')
@@ -197,7 +201,7 @@ router.post('/verifyTx', [
         return next(errors.array())
     }
     try {
-        const id = req.query.id
+        const id = escape(req.query.id || '')
         const action = req.body.action
         let signer = (req.body.signer || '').toLowerCase()
         let candidate = (req.body.candidate || '').toLowerCase()
@@ -305,14 +309,15 @@ router.post('/verifyTx', [
 })
 
 router.get('/getScanningResult', [
-    query('id').exists().withMessage('id is required')
+    query('id').isLength({ min: 1 }).exists().withMessage('id is required')
+        .contains('-').withMessage('wrong id format')
 ], async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
         return next(errors.array())
     }
     try {
-        const id = req.query.id
+        const id = escape(req.query.id || '')
 
         const signTx = await db.SignTransaction.findOne({ signId: id })
 
@@ -433,6 +438,158 @@ router.get('/:voter/markReadAll', [], async (req, res, next) => {
             isRead: true
         })
         return res.send('Done')
+    } catch (error) {
+        return next(error)
+    }
+})
+
+router.get('/annualReward', [
+    query('candidate').exists().withMessage('candidate address is required')
+], async (req, res, next) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+        return next(errors.array())
+    }
+    try {
+        const candidate = req.query.candidate.toLowerCase()
+        // candidate info
+        const candidateData = await db.Candidate.findOne({
+            smartContractAddress: config.get('blockchain.validatorAddress'),
+            candidate
+        })
+        if (!candidateData) {
+            return next(new Error('Candidate not found'))
+        }
+        if (candidateData.rank) {
+            const capacity = new BigNumber(candidateData.capacityNumber)
+            console.log(capacity)
+            const latestBlock = await web3.eth.getBlockNumber()
+            const latestCheckpoint = latestBlock - (latestBlock % parseInt(config.get('blockchain.epoch')))
+            const lastEpoch = (parseInt(latestCheckpoint / config.get('blockchain.epoch'))).toString()
+
+            const promises = await Promise.all([
+                web3.eth.getBlock(latestCheckpoint - 899),
+                web3.eth.getBlock(latestCheckpoint),
+                db.Status.count({
+                    epoch: lastEpoch,
+                    status: 'MASTERNODE'
+                })
+            ])
+            const numberOfMN = promises[2]
+            const epochDuration = ((new Date(promises[1].timestamp * 1000) -
+                new Date(promises[0].timestamp * 1000)) / 1000) / 60 // minutes
+            // number of epochs in a year
+            const minPerDay = 60 * 24
+            const epochYear = (minPerDay * 365) / epochDuration
+
+            const totalReward = new BigNumber(config.get('blockchain.reward'))
+            let voterAmount = 1000
+            let voterRW1Year
+            let mnRW1Year
+            let mnStakingYear
+            let masternodeReward
+            // Reward divided to masternode
+            masternodeReward = totalReward.dividedBy(numberOfMN)
+
+            // 50% for voter
+            const voterRWEpoch = masternodeReward.multipliedBy(0.5)
+                .multipliedBy(voterAmount).dividedBy(capacity)
+            // 40% for masternode
+            const mnRWEpoch = masternodeReward.multipliedBy(0.4)
+            // master staking reward
+            const mnStakingEpoch = masternodeReward.multipliedBy(0.5)
+                .multipliedBy(50000).dividedBy(capacity)
+
+            // calculate reward 1 year
+            voterRW1Year = voterRWEpoch.multipliedBy(epochYear)
+            mnRW1Year = mnRWEpoch.multipliedBy(epochYear)
+            mnStakingYear = mnStakingEpoch.multipliedBy(epochYear)
+            const voterROI = voterRW1Year.div(voterAmount).multipliedBy(100).toNumber()
+            const mnROI = (mnRW1Year.plus(mnStakingYear)).dividedBy(50000).multipliedBy(100).toNumber()
+
+            return res.json({
+                epochDuration,
+                lastEpoch,
+                numberOfMN: numberOfMN,
+                capacity: capacity,
+                voterROI,
+                mnROI
+            })
+        }
+    } catch (error) {
+        return next(error)
+    }
+})
+
+router.get('/averageroi', [], async (req, res, next) => {
+    try {
+        // Average ROI for voters and owners
+        const promises0 = await Promise.all([
+            db.Candidate.find({
+                rank: { $nin: ['', null] }
+            }).sort({ rank: 1 }).limit(1).lean().exec(),
+            db.Candidate.find({
+                rank: { $nin: ['', null] }
+            }).sort({ rank: -1 }).limit(1).lean().exec()
+        ])
+
+        const latestBlock = await web3.eth.getBlockNumber()
+        const latestCheckpoint = latestBlock - (latestBlock % parseInt(config.get('blockchain.epoch')))
+        const lastEpoch = (parseInt(latestCheckpoint / config.get('blockchain.epoch'))).toString()
+
+        const promises = await Promise.all([
+            web3.eth.getBlock(latestCheckpoint - 899),
+            web3.eth.getBlock(latestCheckpoint),
+            db.Status.count({
+                epoch: lastEpoch,
+                status: 'MASTERNODE'
+            })
+        ])
+        const numberOfMN = promises[2]
+        const epochDuration = ((new Date(promises[1].timestamp * 1000) -
+            new Date(promises[0].timestamp * 1000)) / 1000) / 60 // minutes
+        // number of epochs in a year
+        const minPerDay = 60 * 24
+        const epochYear = (minPerDay * 365) / epochDuration
+
+        const totalReward = new BigNumber(config.get('blockchain.reward'))
+        let voterAmount = 1000
+
+        // Reward divided to masternode
+        let masternodeReward = totalReward.dividedBy(numberOfMN)
+
+        const top1MN = promises0[0]
+        const lastMN = promises0[1]
+        console.log(`Here is ${top1MN[0]}`)
+        // 50% for voter and calculate reward 1 year
+        const top1MNVoterRW1Year = masternodeReward.multipliedBy(0.5)
+            .multipliedBy(voterAmount).dividedBy(top1MN[0].capacityNumber).multipliedBy(epochYear)
+        const lastMNVoterRW1Year = masternodeReward.multipliedBy(0.5)
+            .multipliedBy(voterAmount).dividedBy(lastMN[0].capacityNumber).multipliedBy(epochYear)
+        // 40% for masternode
+        const mnStakingYear = masternodeReward.multipliedBy(0.4).multipliedBy(epochYear)
+        // master staking reward
+        const top1MNStakingYear = masternodeReward.multipliedBy(0.5)
+            .multipliedBy(50000).dividedBy(top1MN[0].capacityNumber).multipliedBy(epochYear)
+        const lastMNStakingYear = masternodeReward.multipliedBy(0.5)
+            .multipliedBy(50000).dividedBy(lastMN[0].capacityNumber).multipliedBy(epochYear)
+
+        // calculate percentage
+
+        const top1MNVoterROI = top1MNVoterRW1Year.div(voterAmount).multipliedBy(100)
+        const lastMNVoterROI = lastMNVoterRW1Year.div(voterAmount).multipliedBy(100)
+        const top1MNOwnerROI = (top1MNStakingYear.plus(mnStakingYear)).dividedBy(50000).multipliedBy(100)
+        const lastMNOwnerROI = (lastMNStakingYear.plus(mnStakingYear)).dividedBy(50000).multipliedBy(100)
+
+        const averageStakingROI = (top1MNVoterROI.plus(lastMNVoterROI)).dividedBy(2).toNumber()
+        const averageMNOwnerROI = (top1MNOwnerROI.plus(lastMNOwnerROI)).dividedBy(2).toNumber()
+
+        return res.json({
+            epochDuration,
+            lastEpoch,
+            averageStakingROI: averageStakingROI,
+            averageOwnerROI: averageMNOwnerROI
+        })
     } catch (error) {
         return next(error)
     }
