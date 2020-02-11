@@ -16,7 +16,9 @@
                     <div class="col-12">
                         <div class="section-title">
                             <i class="tm-flag color-yellow" />
-                            <span>{{ candidate.name }}</span>
+                            <span>
+                                {{ (candidate.rank) ? `${candidate.rank}. ${candidate.name}` : candidate.name }}
+                            </span>
 
                             <router-link
                                 v-if="account === candidate.owner"
@@ -31,7 +33,9 @@
                                     :key="key"
                                     class="list-inline-item social-links__item">
                                     <a
+                                        v-if="value !== ''"
                                         :href="value"
+                                        target="_blank"
                                         class="social-links__link">
                                         <i :class="'social-links__icon tm-' + key" />
                                     </a>
@@ -58,7 +62,9 @@
                                 </router-link>
                             </p>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 XDC-info">
+                        <div
+                            v-if="candidate.status !== 'PROPOSED'"
+                            class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 XDC-info">
                             <p class="XDC-info__title">
                                 <i class="tm-dot XDC-info__icon" />
                                 <span class="XDC-info__text">Latest Signed Block</span>
@@ -111,9 +117,24 @@
                             class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 XDC-info">
                             <p class="XDC-info__title">
                                 <i class="tm-dot XDC-info__icon" />
-                                <span class="XDC-info__text">Recent Reward</span>
+                                <span class="XDC-info__text">Balance</span>
                             </p>
                             <p
+                                id="XDC-info__description--balance"
+                                class="XDC-info__description">
+                                {{ formatCurrencySymbol(formatBigNumber(candidate.balance, 3)) }}
+                                <b-tooltip
+                                    v-if="checkLongNumber(candidate.balance)"
+                                    ref="tooltip"
+                                    target="XDC-info__description--balance">
+                                    {{ formatCurrencySymbol(formatBigNumber(candidate.balance, 6)) }}
+                                </b-tooltip>
+                            </p>
+                            <!-- <p class="XDC-info__title">
+                                <i class="tm-dot XDC-info__icon" />
+                                <span class="XDC-info__text">Recent Reward</span>
+                            </p> -->
+                            <!-- <p
                                 id="XDC-info__description--you-rewarded"
                                 class="XDC-info__description">
                                 {{ formatCurrencySymbol(formatNumber(recentReward)) }}
@@ -123,7 +144,7 @@
                                     target="XDC-info__description--you-rewarded">
                                     {{ formatCurrencySymbol(formatBigNumber(candidate.rewarded, 6)) }}
                                 </b-tooltip>
-                            </p>
+                            </p> -->
                         </div>
                         <div
                             class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 m-xl-0 XDC-info">
@@ -140,25 +161,6 @@
                                           'color-pink': candidate.status === 'RESIGNED' }"
                                 class="XDC-info__description">
                                 {{ candidate.status }}
-                            </p>
-                        </div>
-                        <div
-                            v-if="isReady"
-                            class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 m-xl-0 XDC-info">
-                            <p class="XDC-info__title">
-                                <i class="tm-dot XDC-info__icon" />
-                                <span class="XDC-info__text">Balance</span>
-                            </p>
-                            <p
-                                id="XDC-info__description--balance"
-                                class="XDC-info__description">
-                                {{ formatCurrencySymbol(formatBigNumber(candidate.balance, 3)) }}
-                                <b-tooltip
-                                    v-if="checkLongNumber(candidate.balance)"
-                                    ref="tooltip"
-                                    target="XDC-info__description--balance">
-                                    {{ formatCurrencySymbol(formatBigNumber(candidate.balance, 6)) }}
-                                </b-tooltip>
                             </p>
                         </div>
                         <div class="col-12 col-md-6 col-lg-6 col-xl-4 order-md-1 order-lg-0 m-xl-0 XDC-info">
@@ -195,15 +197,36 @@
                                 <template v-else><a href="/setting">Login to Get KYC</a></template>
                             </p>
                         </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 XDC-info">
+                            <p class="XDC-info__title">
+                                <i class="tm-dot XDC-info__icon" />
+                                <span class="XDC-info__text">Est. Staking ROI</span>
+                            </p>
+                            <p
+                                id="XDC-info__description--balance"
+                                class="XDC-info__description">
+                                {{ voterROI ? voterROI + '%' : '---' }}
+                            </p>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 XDC-info">
+                            <p class="XDC-info__title">
+                                <i class="tm-dot XDC-info__icon" />
+                                <span class="XDC-info__text">Est. Owner ROI</span>
+                            </p>
+                            <p
+                                id="XDC-info__description--balance"
+                                class="XDC-info__description">
+                                {{ mnROI ? mnROI + '%' : '---' }}
+                            </p>
+                        </div>
                     </div>
                 </b-card>
                 <div
                     class="buttons text-right">
                     <b-button
-                        v-if="'0x' + candidate.owner.substring(3) === account && candidate.status !== 'RESIGNED'"
+                        v-if="'0x' + candidate.owner === account && candidate.status !== 'RESIGNED'"
                         :to="`/resign/${candidate.address}`"
                         variant="secondary">Resign</b-button>
-
                 </div>
             </div>
             <!-- <div
@@ -236,16 +259,36 @@
                     </div>
                 </div>
             </div> -->
-            <!-- <div
+            <div
                 :class="'container section section--mnrewards'
                 + (rewardLoading ? ' XDC-loading' : '')">
-                <div class="row">
+                <div class="row candidate-reward-bar">
                     <div class="col-12">
                         <h3 class="section-title">
                             <i class="tm-gift color-purple" />
                             <span>Masternode Rewards</span>
                             <span class="text-truncate section-title__description">
-                                Estimated Reward for Masternode</span>
+                                Reward/Status for candidate</span>
+                            <span
+                                v-if="candidate.slashedTimes"
+                                class="text-truncate section-title__description">
+                                MN was slashed for {{ candidate.slashedTimes }}
+                                {{ candidate.slashedTimes > 1 ? 'epochs' : 'epoch' }} over the past week </span>
+                            <span
+                                class="text-truncate section-title__description">
+                                Slashing history:
+                                <a
+                                    :class="currentTab === 'week' ? 'tab-active' : ''"
+                                    @click="filterSlash('week')">1 Week</a>
+                                <span>|</span>
+                                <a
+                                    :class="currentTab === 'month' ? 'tab-active' : ''"
+                                    @click="filterSlash('month')">1 Month</a>
+                                <span>|</span>
+                                <a
+                                    :class="currentTab === 'year' ? 'tab-active' : ''"
+                                    @click="filterSlash('year')">1 Year</a>
+                            </span>
                         </h3>
                     </div>
                 </div>
@@ -257,7 +300,7 @@
                     :per-page="mnRewardsPerPage"
                     :show-empty="true"
                     :class="`XDC-table XDC-table--mnrewards${rewardLoading ? ' loading' : ''}`"
-                    empty-text="There are no rewards to show"
+                    :empty-text="`There are no ${(currentTab !== '' ? 'records' : 'rewards')} to show`"
                     stacked="md" >
 
                     <template
@@ -268,7 +311,8 @@
                     <template
                         slot="reward"
                         slot-scope="data">
-                        {{ formatCurrencySymbol(formatNumber(data.item.reward)) }}
+                        {{ !isNaN(data.item.reward)
+                        ? formatCurrencySymbol(formatNumber(data.item.reward)) : data.item.reward }}
                     </template>
 
                     <template
@@ -290,7 +334,7 @@
                     align="center"
                     class="XDC-pagination"
                     @change="rewardPageChange" />
-            </div> -->
+            </div>
             <div
                 :class="'container section section-voters'
                 + (voterLoading ? ' XDC-loading' : '')">
@@ -309,7 +353,7 @@
                     :fields="voterFields"
                     :per-page="voterPerPage"
                     :show-empty="true"
-                    :class="`XDC-table XDC-table--voted${voterLoading ? ' loading' : ''}`"
+                    :class="`XDC-table XDC-table--voter${voterLoading ? ' loading' : ''}`"
                     empty-text="There are no voters to show"
                     stacked="md"
                     @sort-changed="sortingChangeVoters" >
@@ -409,10 +453,10 @@
                         <a
                             v-b-tooltip.hover.right
                             :href="`${config.explorerUrl}/txs/${data.item.tx}`"
-                            title="View on xdcscan"
+                            title="View on XinFinScan"
                             target="_blank">
                             <i class="tm-eye" />
-                            <span>View on xdcscan</span>
+                            <span>View on XinFinScan</span>
                         </a>
                     </template>
                 </b-table>
@@ -435,8 +479,15 @@ import BigNumber from 'bignumber.js'
 import Chart from '../Chart.vue'
 import moment from 'moment'
 import store from 'store'
+
 export default {
     name: 'App',
+    metaInfo: {
+        title: 'Candidate Details | MasterNode-App',
+        meta: [
+            { name: 'description', content: 'Staking XinFin Masternode to get the reward every epochs. You can use mobile, desktop, hardware wallet - ledger nano, trezor to stake XinFin' } // eslint-disable-line
+        ]
+    },
     components: {
         chart: Chart
     },
@@ -561,6 +612,8 @@ export default {
             loadedMEM: true,
             isCandidate: true,
             currentTab: '',
+            voterROI: '',
+            mnROI: '',
             KYC: {
                 url: '',
                 status: false
@@ -586,18 +639,14 @@ export default {
     },
     created: async function () {
         let self = this
-        self.config = await this.appConfig()
+        self.config = store.get('configMaster') || await this.appConfig()
         self.currentBlock = self.config.blockchain.blockNumber
         self.isReady = !!self.web3
         try {
             if (self.isReady) {
-                let contract = self.XDCValidator.deployed()
-                if (store.get('address')) {
-                    self.account = store.get('address').toLowerCase()
-                } else {
-                    self.account = this.$store.state.walletLoggedIn
-                        ? this.$store.state.walletLoggedIn : self.getAccount()
-                }
+                let contract//  = self.XDCValidator.deployed()
+                contract = self.XDCValidator
+                self.account = store.get('address') || self.$store.state.address || await self.getAccount()
                 if (await self.account && await contract) {
                     self.isXDCnet = true
                 }
@@ -611,10 +660,13 @@ export default {
         } catch (error) {
             console.log(error)
         }
-        await self.getCandidateData()
         self.getCandidateVoters()
         self.getCandidateTransactions()
+        await self.getCandidateData()
         self.getCandidateRewards()
+        if (self.candidate.rank) {
+            self.getAnnualReward()
+        }
     },
     mounted () {},
     methods: {
@@ -623,6 +675,7 @@ export default {
             if (event === 'Unvote' || event === 'Resign') {
                 clazz = 'color-pink'
             }
+
             return clazz
         },
         getDate (date) {
@@ -630,19 +683,22 @@ export default {
         },
         async getCandidateData () {
             let self = this
+
             try {
                 let address = self.candidate.address
+
                 self.loading = true
                 const candidatePromise = axios.get(`/api/candidates/${address}`)
+
                 // Get candidate's information
                 let c = await candidatePromise
+
                 if (c.data) {
                     let data = c.data
                     self.isCandidate = data.candidate
                     self.candidate.name = data.name ? data.name : 'XinFin MasterNode'
                     self.candidate.status = data.status
                     self.candidate.nodeId = data.nodeId
-                    self.candidate.monitor = (data.nodeId) ? 'ON' : 'OFF'
                     self.candidate.owner = data.owner
                     self.candidate.cap = new BigNumber(data.capacity).div(10 ** 18).toNumber()
                     self.candidate.rewarded = 0
@@ -657,6 +713,7 @@ export default {
                     self.candidate.slashedTimes = data.slashedTimes
                     self.candidate.rank = data.rank
                 }
+
                 if (self.web3) {
                     let youVoted = new BigNumber(0)
                     self.web3.eth.getBalance(self.candidate.address, function (a, b) {
@@ -665,18 +722,24 @@ export default {
                             console.log('got an error', a)
                         }
                     })
-                    console.log(address, 'address')
+                    console.log(`Here is i am ${self.candidate.address} and ${address} and ${'0x' + address.substring(3)}`)
                     self.KYC.status = await this.getKYCStatus('0x' + address.substring(3))
                     if (self.KYC.status) self.KYC.url = `https://kycdocs.xinfin.network/${self.KYC.status}`
                     if (self.account) {
                         try {
-                            let contract = await self.getXDCValidatorInstance()
-                            youVoted = await contract.getVoterCap(address, self.account)
-                            self.candidate.cap = await contract.getCandidateCap(address).div(1e18).toNumber()
+                            let contract// = self.XDCValidator.deployed()
+                            contract = self.XDCValidator
+                            // youVoted = await contract.getVoterCap(address, self.account)
+                            youVoted = await contract.methods.getVoterCap(address, self.account)
+                                .call()
+                            self.candidate.cap = await contract.methods.getCandidateCap(address)
+                                .call().div(1e18).toNumber()
                         } catch (e) {}
                     }
-                    self.candidate.voted = youVoted.div(10 ** 18).toNumber()
+
+                    self.candidate.voted = new BigNumber(youVoted).div(10 ** 18).toNumber()
                 }
+
                 self.loading = false
             } catch (e) {
                 self.loading = false
@@ -697,6 +760,7 @@ export default {
                     `/api/candidates/${address}/${self.candidate.owner}/getRewards?${self.serializeQuery(params)}`
                 )
                 let items = []
+
                 mnRewards.data.items.map((r) => {
                     const reward = !isNaN(r.masternodeReward || 0)
                         ? new BigNumber(r.masternodeReward || 0).toFixed(6) : r.masternodeReward
@@ -730,15 +794,18 @@ export default {
                     sortDesc: self.voterSortDesc
                 }
                 const voterPromise = axios.get(`/api/candidates/${address}/voters?${self.serializeQuery(params)}`)
+
                 // Voter table
                 let voters = await voterPromise
                 let items = []
+
                 voters.data.items.map((v, idx) => {
                     items.push({
                         address: v.voter,
                         cap: new BigNumber(v.capacity).div(10 ** 18).toNumber()
                     })
                 })
+
                 self.voters = items
                 self.voterTotalRows = voters.data.total
                 self.voterLoading = false
@@ -758,10 +825,12 @@ export default {
                     sortBy: self.txSortBy,
                     sortDesc: self.txSortDesc
                 }
+
                 const txPromise = axios.get(`/api/transactions/candidate/${address}?${self.serializeQuery(params)}`)
                 // Get transaction table
                 let txs = await txPromise
                 let items = []
+
                 txs.data.items.map((tx, idx) => {
                     items.push({
                         tx: tx.tx,
@@ -774,6 +843,7 @@ export default {
                     })
                 })
                 self.transactions = items
+
                 self.txTotalRows = txs.data.total
                 self.txLoading = false
             } catch (error) {
@@ -874,9 +944,26 @@ export default {
                 console.log(error)
             }
         },
+        async getAnnualReward () {
+            axios.get('/api/voters/annualReward?candidate=' + this.candidate.address)
+                .then((result) => {
+                    if (result.data && result.data.voterROI) {
+                        this.voterROI = result.data.voterROI.toFixed(2)
+                        this.mnROI = result.data.mnROI.toFixed(2)
+                    }
+                })
+                .catch(error => {
+                    console.log(error)
+                    this.$toasted.show(error, { type: 'error' })
+                })
+        },
         async getKYCStatus (address) {
-            const contract = await this.getXDCValidatorInstance()
-            const getKYC = await contract.getLatestKYC.call(address)
+            // const contract = await this.getXDCValidatorInstance()
+            let self = this
+            let contract// = self.XDCValidator.deployed()
+            contract = self.XDCValidator
+            console.log('Here is ', contract)
+            const getKYC = await contract.methods.getLatestKYC(address).call()
             console.log(getKYC)
             return getKYC
             // const KYCString = await contract.KYCString.call(address)
