@@ -21,9 +21,9 @@ module.exports = function(deployer) {
         '0xfC5571921c6d3672e13B58EA23DEA534f2b35fA0'
     ]
     let caps = [
-        '50000000000000000000000',
-        '50000000000000000000000',
-        '50000000000000000000000'
+        '10000000000000000000000000',
+        '10000000000000000000000000',
+        '10000000000000000000000000'
     ]
     let firstOwner = '0x487d62d33467c4842c5e54Eb370837E4E88BBA0F'
     return deployer.deploy(XDCValidator, candidates, caps, firstOwner, minCandidateCap, minVoterCap, maxValidatorNumber, candidateWithdrawDelay, voterWithdrawDelay).then((tv) => {
