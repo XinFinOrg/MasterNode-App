@@ -230,6 +230,10 @@ export default {
             candidateError: false,
             balance: 0,
             txFee: 0,
+            gasPrice: null,
+            transactionHash: '',
+            toastMessage: 'You have successfully applied!',
+            toastMessageError: 'An error occurred while applying, please try again',
             KYC: {
                 file: '',
                 status: false
@@ -261,23 +265,19 @@ export default {
         }
     },
     created: async function () {
-        let self = this
-        let account
-        self.config = await self.appConfig()
+        const self = this
+        self.config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = self.config.blockchain || {}
         try {
             self.isReady = !!self.web3
+            self.gasPrice = await self.web3.eth.getGasPrice()
+            self.txFee = new BigNumber(this.chainConfig.gas * self.gasPrice).div(10 ** 18).toString(10)
             if (!self.web3 && self.NetworkProvider === 'metamask') {
                 throw Error('Web3 is not properly detected. Have you installed MetaMask extension?')
             }
-            if (store.get('address')) {
-                account = store.get('address').toLowerCase()
-            } else {
-                account = this.$store.state.walletLoggedIn
-                    ? this.$store.state.walletLoggedIn : await self.getAccount()
-            }
-            self.account = account
-            await self.getKYCStatus(account)
+            self.account = store.get('address') ||
+            self.$store.state.address || await self.getAccount()
+            await self.getKYCStatus(self.account)
         } catch (e) {
             self.$toasted.show(`You need login your account before voting`,
                 {
@@ -292,7 +292,6 @@ export default {
                         }
                     ]
                 })
-            self.$router.push({ path: '/setting' })
             console.log(e)
         }
     },
@@ -362,19 +361,26 @@ export default {
 
                 self.loading = true
 
-                let contract = await self.getXDCValidatorInstance()
+                let contract// = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
+                const account = (await self.getAccount() || '').toLowerCase()
                 let txParams = {
-                    from : self.account,
+                    from : account,
                     value: self.web3.utils.toHex(new BigNumber(value).multipliedBy(10 ** 18).toString(10)),
-                    gasPrice: self.web3.utils.toHex(self.chainConfig.gasPrice),
-                    gas: self.web3.utils.toHex(self.chainConfig.gas)
+                    gasPrice: self.web3.utils.toHex(self.gasPrice),
+                    gas: self.web3.utils.toHex(self.chainConfig.gas),
+                    gasLimit: self.web3.utils.toHex(self.chainConfig.gas),
+                    chainId: self.chainConfig.networkId
                 }
-                let rs
-                if (self.NetworkProvider === 'ledger') {
-                    let nonce = await self.web3.eth.getTransactionCount(self.account)
-                    // make a call to /api/ipfs/addKYC with owner,file.
-                    // let hash = await axios.post('/api/ipfs/addKYC',{})
-                    let dataTx = contract.propose.request(coinbase).params[0]
+                if (self.NetworkProvider === 'ledger' ||
+                    self.NetworkProvider === 'trezor') {
+                    let nonce = await self.web3.eth.getTransactionCount(account)
+                    // let dataTx = contract.propose.request(coinbase).params[0]
+                    const data = await contract.methods.propose(coinbase).encodeABI()
+                    const dataTx = {
+                        data,
+                        to: self.chainConfig.validatorAddress
+                    }
                     Object.assign(
                         dataTx,
                         dataTx,
@@ -384,23 +390,52 @@ export default {
                         }
                     )
                     let signature = await self.signTransaction(dataTx)
-                    rs = await self.sendSignedTransaction(dataTx, signature)
-                } else {
-                    rs = await contract.propose(coinbase, txParams)
-                }
-                let toastMessage = rs.tx ? 'You have successfully applied!'
-                    : 'An error occurred while applying, please try again'
-                self.$toasted.show(toastMessage)
-
-                if (coinbase.substring(0, 2) === '0x') {
-                    coinbase = 'xdc' + coinbase.substring(2)
-                }
-                setTimeout(() => {
-                    self.loading = false
-                    if (rs.tx) {
-                        self.$router.push({ path: `/candidate/${coinbase}` })
+                    const txHash = await self.sendSignedTransaction(dataTx, signature)
+                    if (txHash) {
+                        self.transactionHash = txHash
+                        let check = true
+                        while (check) {
+                            const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                            if (receipt) {
+                                check = false
+                                self.$toasted.show(self.toastMessage)
+                                setTimeout(() => {
+                                    self.loading = false
+                                    if (self.transactionHash) {
+                                        self.$router.push({ path: `/candidate/${coinbase}` })
+                                    }
+                                }, 2000)
+                            }
+                        }
                     }
-                }, 2000)
+                } else {
+                    // rs = await contract.propose(coinbase, txParams)
+                    contract.methods.propose(coinbase).send(txParams)
+                        .on('transactionHash', async (txHash) => {
+                            self.transactionHash = txHash
+                            let check = true
+                            while (check) {
+                                const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                                if (receipt) {
+                                    check = false
+                                    self.$toasted.show(self.toastMessage)
+                                    if (coinbase.substring(0, 2) === '0x') {
+                                        coinbase = 'xdc' + coinbase.substring(2)
+                                    }
+                                    setTimeout(() => {
+                                        self.loading = false
+                                        if (self.transactionHash) {
+                                            self.$router.push({ path: `/candidate/${coinbase}` })
+                                        }
+                                    }, 2000)
+                                }
+                            }
+                        }).catch(e => {
+                            console.log(e)
+                            self.loading = false
+                            self.$toasted.show(self.toastMessageError + e, { type: 'error' })
+                        })
+                }
             } catch (e) {
                 self.loading = false
                 self.$toasted.show(`An error occurred while applying, please fix it and try again: ${String(e)}`, {
@@ -480,19 +515,34 @@ export default {
                 clearInterval(self.interval)
             }
         },
+        async setKYCStatus (account) {
+            let self = this
+            let contract = self.XDCValidator
+            // console.log(`ASAS ${account} and ${contract} and ${contract.methods.getHashCount(this.address)}`)
+            const isHashFound = await contract.methods.getHashCount(this.address).call()
+            console.log(`Hash ${isHashFound} andand ${JSON.stringify(isHashFound.toString())}`)
+            console.log(new BigNumber(isHashFound).toNumber(), 'KYC uploaded successfully')
+            if (new BigNumber(isHashFound).toNumber()) {
+                let kychash = await contract.methods.getLatestKYC(this.address).call()
+                // const getKYC = await contract.methods.getLatestKYC(this.address).call().toString()
+                // const KYCString = await contract.KYCString.call(this.address)
+                this.KYCStatus = kychash
+            }
+        },
         async getKYCStatus (account) {
-            let contract = await this.getXDCValidatorInstance()
-            if (contract) {
-                const isHashFound = await contract.getHashCount.call(account)
-                if (new BigNumber(isHashFound).toNumber()) {
-                    const getKYC = await contract.getLatestKYC.call(account)
-                    // const KYCString = await contract.KYCString.call(account)
-                    this.KYC.status = getKYC
-                }
+            let self = this
+            let contract = self.XDCValidator
+            let getKYC = await contract.methods.getLatestKYC(account).call()
+            if (contract && getKYC) {
+                this.KYC.status = getKYC
+                this.$toasted.show('Verified KYC User')
             }
         },
         async uploadKYC () {
+            let self = this
+            let contract = self.XDCValidator
             try {
+                console.log(`>>>>>>>>>>>>TxParams `)
                 if (this.KYC && !!this.KYC.file) {
                     if (this.KYC.file.type !== 'application/pdf') {
                         this.KYC.file = null
@@ -502,9 +552,13 @@ export default {
                     this.loading = true
                     const formData = new FormData()
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
+                    console.log(`First ${this.web3.networkId}`)
                     const { data } = await axios.post('/api/ipfs/addKYC', formData)
-                    const contract = await this.getXDCValidatorInstance()
-                    const gasPrice = await this.web3.eth.getGasPrice() * 1.40
+                    console.log(`2nd ${data}`)
+                    // let contract = self.XDCValidator
+                    console.log(`3nd ${contract}`)
+                    const gasPrice = 21000
+                    console.log(`4th ${gasPrice}`)
                     let txParams = {
                         from : this.account,
                         gasPrice: this.web3.utils.toHex(gasPrice),
@@ -512,9 +566,9 @@ export default {
                     }
                     console.log(`>>>>>>>>>>>>TxParams ${txParams}`)
                     console.log(`>>>>>>>>>>>>HASH${data.hash}`)
-                    console.log(`>>>>>>>>>>>>Before`)
-                    console.log(`>>>>>>>>>>>>${contract.getCandidates()}`)
-                    await contract.uploadKYC(data.hash, txParams)
+                    console.log(`>>>>>>>>>>>>Before - ${this.account}`)
+                    // console.log(`>>>>>>>>>>>>${contract.method.candidateCount()}`)
+                    await contract.methods.uploadKYC(data.hash).send(txParams)
                     // await contract.propose(coinbase, txParams)
                     // console.log(`>>>>>>>${rs}`)
                     // await contract.getCandidates()

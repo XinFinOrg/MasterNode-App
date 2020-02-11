@@ -5,6 +5,7 @@
             align-h="center"
             class="m-0">
             <b-card
+                v-if="!address"
                 :class="'col-12 col-md-8 col-lg-7 XDC-card XDC-card--lighter p-0'
                 + (loading ? ' XDC-loading' : '')">
                 <h4 class="color-white XDC-card__title XDC-card__title--big">Login</h4>
@@ -62,11 +63,10 @@
                             v-if="$v.mnemonic.$dirty && !$v.mnemonic.required"
                             class="text-danger">Required field</span>
                     </b-form-group>
-
                     <b-form-group
-                        v-if="provider === 'ledger'"
+                        v-if="provider === 'custom'"
                         class="mb-4"
-                        label="Select HD derivation path"
+                        label="Select HD derivation path(MNEMONIC)"
                         label-for="hdPath">
                         <b-form-input
                             :class="getValidationClass('hdPath')"
@@ -76,33 +76,19 @@
                         <span
                             v-if="$v.hdPath.$dirty && !$v.hdPath.required"
                             class="text-danger">Required field</span>
+                        <small
+                            class="form-text text-muted">To unlock the wallet, try paths
+                            <code
+                                class="hd-path"
+                                @click="changePath(`m/44'/60'/0'/0`)">m/44'/60'/0'/0</code> or
+                            <code
+                                class="hd-path"
+                                @click="changePath(`m/44'/60'/0'`)">m/44'/60'/0'</code> or
+                            <code
+                                class="hd-path"
+                                @click="changePath(`m/44'/889'/0'/0`)">m/44'/889'/0'/0</code></small>
                     </b-form-group>
 
-                    <b-form-group
-                        v-if="provider === 'trezor'"
-                        class="mb-4"
-                        label-for="hdPath">
-                        <span>HD derivation path: </span>
-                        <label class="ml-1"><b>m/44'/60'/0'/0</b></label>
-                        <!-- <b-form-input
-                            :class="getValidationClass('hdPath')"
-                            :value="hdPath"
-                            v-model="hdPath"
-                            readonly
-                            type="text" /> -->
-                        <!-- <span
-                            v-if="$v.hdPath.$dirty && !$v.hdPath.required"
-                            class="text-danger">Required field</span> -->
-                    </b-form-group>
-
-                    <div
-                        v-if="!isReady && provider === 'metamask'">
-                        <p>Please install &amp; login
-                            <a
-                                href="#"
-                                target="_blank">Metamask Extension</a>
-                            then connect it to XinFin Mainnet or Testnet.</p>
-                    </div>
                     <div class="buttons text-right">
                         <b-button
                             v-if="provider !== 'xdcwallet'"
@@ -196,10 +182,13 @@
                             :disabled="w.blockNumber > chainConfig.blockNumber"
                             variant="primary"
                             @click="withdraw(w.blockNumber, k)">Withdraw</b-button> -->
-                        <b-button
-                            :disabled="w.blockNumber > chainConfig.blockNumber"
-                            variant="primary"
-                            @click="changeView(w, k)">Withdraw</b-button>
+                        <div class="XDC-list__text">
+                            <b-button
+                                :disabled="w.blockNumber > chainConfig.blockNumber"
+                                class="float-right"
+                                variant="primary"
+                                @click="changeView(w, k)">Withdraw</b-button>
+                        </div>
                     </li>
                 </ul>
                 <ul
@@ -218,6 +207,7 @@
                             <span class="text-muted">{{ getCurrencySymbol() }}</span></p>
                             <span>Capacity</span>
                         </div>
+                        <p class="XDC-list__text"/>
                     </li>
                 </ul>
             </b-card>
@@ -376,9 +366,10 @@ export default {
         this.provider = 'custom'
         let self = this
         self.hdWallets = self.hdWallets || {}
-        self.config = await self.appConfig()
+        self.config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = self.config.blockchain || {}
         self.networks.rpc = self.chainConfig.rpc
+
         self.setupAccount = async () => {
             let contract
             let account
@@ -389,23 +380,27 @@ export default {
                 }
                 if (self.web3) {
                     try {
-                        contract = await self.getXDCValidatorInstance()
+                        // contract = await self.getXDCValidatorInstance()
+                        contract = self.XDCValidator
+                        self.gasPrice = await self.web3.eth.getGasPrice()
                     } catch (error) {
-                        throw Error(`Make sure you choose correct XinFin network.${error}`)
+                        throw Error('Make sure you choose correct XinFin network.')
                     }
                 }
-                self.gasPrice = await self.web3.eth.getGasPrice()
+
                 if (store.get('address') && self.isReady) {
                     account = store.get('address').toLowerCase()
                 } else {
-                    account = this.$store.state.walletLoggedIn
-                        ? this.$store.state.walletLoggedIn : (self.web3 ? await self.getAccount() : false)
+                    account = this.$store.state.address
+                        ? this.$store.state.address : (self.web3 ? await self.getAccount() : false)
                 }
+
                 if (!account) {
                     if (store.get('address') && self.provider !== 'custom') {
                         account = store.get('address')
                     } else return false
                 }
+
                 self.address = account
                 self.web3.eth.getBalance(self.address, function (a, b) {
                     self.balance = new BigNumber(b).div(10 ** 18)
@@ -415,10 +410,16 @@ export default {
                 })
                 let whPromise = axios.get(`/api/owners/${self.address}/withdraws?limit=100`)
                 if (contract) {
-                    let blksPromise = contract.getWithdrawBlockNumbers.call({ from: account })
+                    // let blksPromise = contract.getWithdrawBlockNumbers.call({ from: account })
+                    let blksPromise = contract.methods.getWithdrawBlockNumbers().call({ from: account })
                     // let blks = await contract.getWithdrawBlockNumbers.call({ from: account })
+
                     const blks = await blksPromise
-                    await Promise.all(blks.map(async (it, index) => {
+
+                    // remove duplicate
+                    const blks2 = [...new Set(blks)]
+
+                    await Promise.all(blks2.map(async (it, index) => {
                         let blk = new BigNumber(it).toString()
                         if (blk !== '0') {
                             self.aw = true
@@ -427,16 +428,21 @@ export default {
                             blockNumber: blk
                         }
                         wd.cap = new BigNumber(
-                            await contract.getWithdrawCap.call(blk, { from: account })
+                            // await contract.getWithdrawCap.call(blk, { from: account })
+                            await contract.methods.getWithdrawCap(blk).call({ from: account })
                         ).div(10 ** 18).toFormat()
                         wd.estimatedTime = await self.getSecondsToHms(
                             (wd.blockNumber - self.chainConfig.blockNumber)
                         )
                         self.withdraws[index] = wd
                     }))
-                    await this.setKYCStatus(contract)
+                    // const isHashFound = await contract.methods.getLatestKYC(this.address)
+                    // console.log(`Hash  ${isHashFound}`)
+                    await this.setKYCStatus(account)
                 }
+
                 const wh = await whPromise
+
                 // let wh = await axios.get(`/api/owners/${self.address}/withdraws`)
                 self.wh = []
                 wh.data.forEach(w => {
@@ -454,7 +460,7 @@ export default {
                 })
             }
         }
-        if (self.provider === 'xdcwallet') {
+        if (self.provider === 'xdcwallet' && !self.address) {
             const hasQRCOde = self.loginByQRCode()
             if (await hasQRCOde) {
                 self.interval = setInterval(async () => {
@@ -481,6 +487,7 @@ export default {
             if (this.provider === 'metamask') {
                 this.save()
             }
+
             this.$v.$touch()
             if (this.provider === 'custom' && !this.$v.mnemonic.$invalid) {
                 this.save()
@@ -503,6 +510,7 @@ export default {
                     await self.unlockTrezor()
                     wallets = await self.loadTrezorWallets(offset, limit)
                 } else {
+                    await self.unlockLedger()
                     wallets = await self.loadMultipleLedgerWallets(offset, limit)
                 }
                 if (Object.keys(wallets).length > 0) {
@@ -522,7 +530,7 @@ export default {
             store.clearAll()
             const self = this
             self.address = ''
-            self.$store.state.walletLoggedIn = null
+            self.$store.state.address = null
             // clear old data
             self.withdraws = []
             self.aw = []
@@ -544,6 +552,7 @@ export default {
                     // Object - IpcProvider: The IPC provider is used node.js dapps when running a local node
                     // import net from 'net'
                     // wjs = new Web3(new Web3.providers.IpcProvider('~/.ethereum/geth.ipc', net))
+
                     // Object - WebsocketProvider: The Websocket provider is the standard for usage in legacy browsers.
                     // wjs = await ws.connect(self.networks.wss)
                     // wjs = new Web3(new Web3.providers.WebsocketProvider(self.chainConfig.ws))
@@ -558,6 +567,7 @@ export default {
                     store.set('offset', offset)
                     break
                 default:
+                    self.mnemonic = self.mnemonic.trim()
                     const walletProvider =
                         (self.mnemonic.indexOf(' ') >= 0)
                             ? new HDWalletProvider(
@@ -570,10 +580,13 @@ export default {
                 await self.setupProvider(this.provider, wjs)
                 await self.setupAccount()
                 self.loading = false
-                self.$store.state.walletLoggedIn = null
-                store.set('address', self.address.toLowerCase())
-                store.set('network', self.provider)
+
                 if (self.address) {
+                    self.$store.state.address = self.address.toLowerCase()
+                    if (self.provider === 'metamask') {
+                        store.set('address', self.address.toLowerCase())
+                        store.set('network', self.provider)
+                    }
                     self.$bus.$emit('logged', 'user logged')
                     self.$toasted.show('Network Provider was changed successfully')
                 } else {
@@ -608,6 +621,7 @@ export default {
         async getLoginResult () {
             // calling api every 2 seconds
             const { data } = await axios.get('/api/auth/getLoginResult?id=' + this.id)
+
             if (!data.error && data) {
                 this.loading = true
                 if (self.interval) {
@@ -636,28 +650,20 @@ export default {
                 }
                 break
             }
-            // if (event === 'xdcwallet') {
-            //     await this.loginByQRCode()
-            //     this.interval = setInterval(async () => {
-            //         await this.getLoginResult()
-            //     }, 3000)
-            // } else {
-            //     if (this.interval) {
-            //         clearInterval(this.interval)
-            //     }
-            // }
         },
         async getAccountInfo (account) {
             const self = this
             let contract
             self.address = account
-            self.$store.state.walletLoggedIn = account
+            self.$store.state.address = account
             const web3 = new Web3(new HDWalletProvider(
                 '',
                 self.chainConfig.rpc, 0, 1, self.hdPath))
+
             await self.setupProvider(this.provider, web3)
             try {
-                contract = await self.getXDCValidatorInstance()
+                // contract = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
             } catch (error) {
                 if (self.interval) {
                     clearInterval(self.interval)
@@ -666,6 +672,7 @@ export default {
                     type : 'error'
                 })
             }
+
             self.web3.eth.getBalance(self.address, function (a, b) {
                 self.balance = new BigNumber(b).div(10 ** 18).toFormat()
                 if (a) {
@@ -673,7 +680,9 @@ export default {
                 }
             })
             if (contract) {
-                let blks = await contract.getWithdrawBlockNumbers.call({ from: account })
+                // let blks = await contract.getWithdrawBlockNumbers.call({ from: account })
+                let blks = await contract.methods.getWithdrawBlockNumbers().call({ from: account })
+
                 await Promise.all(blks.map(async (it, index) => {
                     let blk = new BigNumber(it).toString()
                     if (blk !== '0') {
@@ -683,7 +692,8 @@ export default {
                         blockNumber: blk
                     }
                     wd.cap = new BigNumber(
-                        await contract.getWithdrawCap.call(blk, { from: account })
+                        // await contract.getWithdrawCap.call(blk, { from: account })
+                        await contract.methods.getWithdrawCap(blk).call({ from: account })
                     ).div(10 ** 18).toFormat()
                     wd.estimatedTime = await self.getSecondsToHms(
                         (wd.blockNumber - self.chainConfig.blockNumber)
@@ -691,6 +701,7 @@ export default {
                     self.withdraws[index] = wd
                 }))
             }
+
             let wh = await axios.get(`/api/owners/${self.address}/withdraws?limit=100`)
             self.wh = []
             wh.data.forEach(w => {
@@ -712,6 +723,7 @@ export default {
         },
         changeView (w, k) {
             const txFee = new BigNumber(this.chainConfig.gas * this.gasPrice).div(10 ** 18)
+
             if (this.balance.isGreaterThanOrEqualTo(txFee)) {
                 this.$router.push({ name: 'CandidateWithdraw',
                     params: {
@@ -722,7 +734,7 @@ export default {
                     }
                 })
             } else {
-                this.$toasted.show('Not enough Xdc for transaction fee', {
+                this.$toasted.show('Not enough XDC for transaction fee', {
                     type : 'info'
                 })
             }
@@ -741,14 +753,22 @@ export default {
             document.getElementById('moreHdAddresses').style.cursor = 'pointer'
             document.body.style.cursor = 'default'
         },
-        async setKYCStatus (contract) {
-            const isHashFound = await contract.getHashCount.call(this.address)
+        async setKYCStatus (account) {
+            let self = this
+            let contract = self.XDCValidator
+            // console.log(`ASAS ${account} and ${contract} and ${contract.methods.getHashCount(this.address)}`)
+            const isHashFound = await contract.methods.getHashCount(this.address).call()
+            console.log(`Hash ${isHashFound} andand ${JSON.stringify(isHashFound.toString())}`)
             console.log(new BigNumber(isHashFound).toNumber(), 'KYC uploaded successfully')
             if (new BigNumber(isHashFound).toNumber()) {
-                const getKYC = await contract.getLatestKYC(this.address)
+                let kychash = await contract.methods.getLatestKYC(this.address).call()
+                // const getKYC = await contract.methods.getLatestKYC(this.address).call().toString()
                 // const KYCString = await contract.KYCString.call(this.address)
-                this.KYCStatus = getKYC
+                this.KYCStatus = kychash
             }
+        },
+        changePath (path) {
+            this.hdPath = path
         }
     }
 }
