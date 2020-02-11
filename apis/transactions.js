@@ -20,7 +20,7 @@ router.get('/:tx', async function (req, res, next) {
 router.get('/voter/:voter', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -60,7 +60,10 @@ router.get('/voter/:voter', [
                 smartContractAddress: config.get('blockchain.validatorAddress'),
                 candidate: t.candidate
             }) || {}
-            c.name = b.name || 'XinFin MasterNode'
+
+            if (t.event === 'Withdraw') {
+                c.name = ''
+            } else { c.name = b.name || 'Anonymous' }
             return c
         }))
         return res.json({
@@ -75,7 +78,8 @@ router.get('/voter/:voter', [
 router.get('/candidate/:candidate', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
