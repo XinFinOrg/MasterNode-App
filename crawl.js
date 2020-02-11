@@ -1,8 +1,8 @@
 'use strict'
 
 const Validator = require('./models/blockchain/validator')
-const Web3Ws = require('./models/blockchain/web3ws')
-const web3Rpc = require('./models/blockchain/web3rpc')
+const Web3Ws = require('./models/blockchain/web3ws').Web3WsInternal
+const web3Rpc = require('./models/blockchain/web3rpc').Web3RpcInternal()
 const config = require('config')
 const db = require('./models/mongodb')
 const BigNumber = require('bignumber.js')
@@ -10,22 +10,24 @@ const moment = require('moment')
 const logger = require('./helpers/logger')
 const axios = require('axios')
 const _ = require('lodash')
+const TwitterHelper = require('./helpers/twitter')
 
 process.setMaxListeners(100)
 
-var web3 = new Web3Ws()
-var validator = new Validator(web3)
-var cpValidator = 0
+let web3 = new Web3Ws()
+let validator = new Validator(web3)
+let cpValidator = 0
+
+let tweetedMN = ''
 
 async function watchValidator () {
     var blockNumber = cpValidator || await web3.eth.getBlockNumber()
     try {
         blockNumber = blockNumber || await web3.eth.getBlockNumber()
-        logger.info('XDCValidator %s - Listen events from block number %s ...',
-            config.get('blockchain.validatorAddress'), blockNumber)
+        // logger.info('XDCValidator %s - Listen events from block number %s ...',
+        //     config.get('blockchain.validatorAddress'), blockNumber) anil
 
         cpValidator = await web3.eth.getBlockNumber()
-
         return validator.getPastEvents('allEvents', {
             fromBlock: blockNumber,
             toBlock: 'latest'
@@ -39,12 +41,14 @@ async function watchValidator () {
                 let capacity = result.returnValues._cap
                 let blk = await web3.eth.getBlock(result.blockNumber)
                 let createdAt = moment.unix(blk.timestamp).utc()
-                if (!voter && (event.event === 'Resign' || event.event === 'Withdraw' || event.event === 'Propose')) {
+                if (!voter && (event.event === 'Resign' ||
+                    event.event === 'Withdraw' || event.event === 'Propose')) {
                     voter = owner
                 }
+                console.log(`Watch V`)
                 if (result.event === 'Withdraw') {
                     let capacity = result.returnValues._cap
-                    await db.Withdraw.updateOne({
+                    await db.Withdraw.findOneAndUpdate({
                         tx: result.transactionHash
                     }, {
                         $set: {
@@ -60,17 +64,29 @@ async function watchValidator () {
                     const block = result.blockNumber
                     const lastCheckpoint = block - (block % parseInt(config.get('blockchain.epoch')))
                     const currentEpoch = parseInt(lastCheckpoint / config.get('blockchain.epoch')) + 1
-                    await db.Status.updateOne({ epoch: currentEpoch, candidate: candidate }, {
+                    await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: candidate }, {
                         epoch: currentEpoch,
                         candidate: candidate,
                         status: 'PROPOSED',
                         epochCreatedAt: createdAt
                     }, { upsert: true })
+                    // Tweet new candidate
+                    if (tweetedMN !== candidate) {
+                        tweetedMN = candidate
+                        await TwitterHelper.tweetNewMN(
+                            voter,
+                            candidate,
+                            (new BigNumber(capacity)).div(1e18).toString(10),
+                            result.transactionHash)
+                    }
                 }
 
                 // get balance
-                let candidateCap = await validator.methods.getCandidateCap(candidate).call()
-                await db.Transaction.updateOne({
+                let candidateCap = 0
+                if (candidate) {
+                    candidateCap = await validator.methods.getCandidateCap(candidate).call()
+                }
+                await db.Transaction.findOneAndUpdate({
                     tx: result.transactionHash
                 }, {
                     $set: {
@@ -90,6 +106,21 @@ async function watchValidator () {
                 })
                 if (result.event === 'Vote' || result.event === 'Unvote') {
                     await updateVoterCap(candidate, voter)
+                    if (result.event === 'Unvote') {
+                        // store withdraw for notification
+                        await db.WithdrawNoti.findOneAndUpdate({
+                            voter: voter,
+                            blockNumber: result.blockNumber,
+                            candidate: candidate
+                        }, {
+                            $set: {
+                                voter: voter,
+                                blockNumber: result.blockNumber,
+                                amount: (new BigNumber(capacity)).div(1e18).toString(10),
+                                withdrawBlockNumber: result.blockNumber + 86400 // 86400 blocks later
+                            }
+                        }, { upsert: true })
+                    }
                 }
                 if (result.event === 'Resign' || result.event === 'Propose') {
                     await updateVoterCap(candidate, owner)
@@ -104,8 +135,10 @@ async function watchValidator () {
                             smartContractAddress: config.get('blockchain.validatorAddress'),
                             candidate: candidate.toLowerCase()
                         })
+                        const candidateName = candidateInfor ? candidateInfor.name || null : null
                         await Promise.all(voters.map(async (v) => {
-                            await fireNotification(v.voter, candidate, candidateInfor.name, result.event)
+                            await fireNotification(v.voter, candidate,
+                                candidateName, result.event, result.blockNumber)
                         }))
                     }
                 }
@@ -147,10 +180,11 @@ async function updateCandidateInfo (candidate) {
                 smartContractAddress: config.get('blockchain.validatorAddress'),
                 candidate: candidate
             }) || {}
+
             status = (status)
                 ? ((candateInDB.status === 'RESIGNED') ? 'PROPOSED' : (candateInDB.status || 'PROPOSED'))
                 : 'RESIGNED'
-            result = await db.Candidate.updateOne({
+            result = await db.Candidate.findOneAndUpdate({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
                 candidate: candidate
             }, {
@@ -172,6 +206,7 @@ async function updateCandidateInfo (candidate) {
                 candidate: candidate
             })
         }
+
         return result
     } catch (e) {
         logger.error('updateCandidateInfo %s', e)
@@ -181,14 +216,14 @@ async function updateCandidateInfo (candidate) {
 async function updateVoterCap (candidate, voter) {
     try {
         let capacity = await validator.methods.getVoterCap(candidate, voter).call()
-        logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
+         logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
         if (voter.substring(0, 2) === '0x') {
             voter = 'xdc' + voter.substring(2)
         }
         if (candidate.substring(0, 2) === '0x') {
             candidate = 'xdc' + candidate.substring(2)
         }
-        return await db.Voter.updateOne({
+        return await db.Voter.findOneAndUpdate({
             smartContractAddress: config.get('blockchain.validatorAddress'),
             candidate: candidate,
             voter: voter
@@ -217,6 +252,7 @@ async function getCurrentCandidates () {
         candidates = _.uniqBy(_.concat(candidates, candidatesInDb), (it) => {
             return it.toLowerCase()
         })
+
         let map = candidates.map(async (candidate) => {
             if (candidate.substring(0, 3) === 'xdc') {
                 candidate = '0x' + candidate.substring(3)
@@ -227,6 +263,7 @@ async function getCurrentCandidates () {
                 v = (v || '').toLowerCase()
                 return updateVoterCap(candidate, v)
             })
+
             await Promise.all(m)
             return updateCandidateInfo(candidate)
         })
@@ -256,17 +293,17 @@ async function updateSignerPenAndStatus () {
             const data = {
                 'jsonrpc': '2.0',
                 'method': 'eth_getCandidateStatus',
-                'params': [c.candidate.toLowerCase(), '0x' + currentEpoch.toString('hex')],
+                'params': [c.candidate.toLowerCase(), 'latest'],
                 'id': config.get('blockchain.networkId')
             }
             const response = await axios.post(config.get('blockchain.rpc'), data)
-
-            if (response.data) {
+            if (response.data.result) {
+                // const result = (response.data.result || {}).status
                 const result = response.data.result
                 switch (result) {
                 case 'MASTERNODE':
                     signers.push(c.candidate)
-                    await db.Candidate.updateOne({
+                    await db.Candidate.findOneAndUpdate({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
                         candidate: c.candidate.toLowerCase()
                     }, {
@@ -274,7 +311,7 @@ async function updateSignerPenAndStatus () {
                             status: 'MASTERNODE'
                         }
                     }, { upsert: true })
-                    await db.Status.updateOne({ epoch: currentEpoch, candidate: c.candidate }, {
+                    await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
                         epoch: currentEpoch,
                         candidate: c.candidate,
                         status: 'MASTERNODE',
@@ -282,7 +319,7 @@ async function updateSignerPenAndStatus () {
                     }, { upsert: true })
                     break
                 case 'SLASHED':
-                    logger.info('Update candidate %s slashed at blockNumber %s', c.candidate, String(blk.number))
+                    // logger.info('Update candidate %s slashed at blockNumber %s', c.candidate, String(blk.number)) anil
                     // fireNotification
                     if (result.toLowerCase() !== c.status.toLowerCase()) {
                         // get all voters who have capacity > 0
@@ -293,12 +330,12 @@ async function updateSignerPenAndStatus () {
                         })
                         if (voters && voters.length > 0) {
                             await Promise.all(voters.map(async (v) => {
-                                await fireNotification(v.voter, c.candidate, c.name, 'Slash')
+                                await fireNotification(v.voter, c.candidate, c.name, 'Slash', latestBlockNumber)
                             }))
                         }
                     }
 
-                    db.Candidate.updateOne({
+                    db.Candidate.findOneAndUpdate({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
                         candidate: c.candidate.toLowerCase()
                     }, {
@@ -308,7 +345,7 @@ async function updateSignerPenAndStatus () {
                     }, { upsert: true }).then(() => true)
                         .catch(error => console.log(error))
 
-                    db.Status.updateOne({ epoch: currentEpoch, candidate: c.candidate }, {
+                    db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
                         epoch: currentEpoch,
                         candidate: c.candidate,
                         status: 'SLASHED',
@@ -318,7 +355,7 @@ async function updateSignerPenAndStatus () {
                     penalties.push(c.candidate)
                     break
                 case 'PROPOSED':
-                    await db.Candidate.updateOne({
+                    await db.Candidate.findOneAndUpdate({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
                         candidate: c.candidate.toLowerCase()
                     }, {
@@ -326,7 +363,7 @@ async function updateSignerPenAndStatus () {
                             status: 'PROPOSED'
                         }
                     }, { upsert: true })
-                    await db.Status.updateOne({ epoch: currentEpoch, candidate: c.candidate }, {
+                    await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
                         epoch: currentEpoch,
                         candidate: c.candidate,
                         status: 'PROPOSED',
@@ -338,7 +375,7 @@ async function updateSignerPenAndStatus () {
                 }
             }
         }))
-        await db.Signer.updateOne({ blockNumber: blk.number }, {
+        await db.Signer.findOneAndUpdate({ blockNumber: blk.number }, {
             networkId: config.get('blockchain.networkId'),
             blockNumber: blk.number,
             signers: signers
@@ -384,10 +421,10 @@ async function watchNewBlock (n) {
                         const latestCheckpoint = latestBlockNumber - (
                             latestBlockNumber % parseInt(config.get('blockchain.epoch')))
                         const latestEpoch = (parseInt(
-                            latestCheckpoint / config.get('blockchain.epoch')) - 1).toString()
+                            latestCheckpoint / config.get('blockchain.epoch'))).toString()
                         const block = await web3.eth.getBlock(latestCheckpoint)
 
-                        db.Rank.updateOne({ candidate: c.candidate, epoch: latestEpoch }, {
+                        db.Rank.findOneAndUpdate({ candidate: c.candidate, epoch: latestEpoch }, {
                             epoch: latestEpoch,
                             candidate: c.candidate,
                             rank: i + 1,
@@ -426,7 +463,7 @@ async function watchNewBlock (n) {
                         })
                         if (voters && voters.length > 0) {
                             await Promise.all(voters.map(async (v) => {
-                                await fireNotification(v.voter, candidate, candidateInfor.name, 'Outtop')
+                                await fireNotification(v.voter, candidate, candidateInfor.name, 'Outtop', n)
                             }))
                         }
                     })).then(() => true).catch(e => console.log(e))
@@ -439,7 +476,7 @@ async function watchNewBlock (n) {
                 })
                 // update rank
                 await Promise.all(candidates.map(async (c, i) => {
-                    await db.Candidate.updateOne({
+                    await db.Candidate.findOneAndUpdate({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
                         candidate: c.candidate
                     }, {
@@ -448,6 +485,23 @@ async function watchNewBlock (n) {
                         }
                     }, { upsert: true })
                 }))
+            }
+
+            // check withdrawal status after 10 blocks
+            if (n % 10 === 0) {
+                // get list of unvote
+                const withdrawBlockNumbers = await db.WithdrawNoti.find({
+                    withdrawBlockNumber: { $lte: n }
+                })
+                // check with current block number
+                if (withdrawBlockNumbers.length > 0) {
+                    await Promise.all(withdrawBlockNumbers.map(async (w) => {
+                        fireNotification(w.voter, '', '', 'Withdraw', n, w.amount)
+                        await db.WithdrawNoti.deleteOne({
+                            _id: w._id
+                        })
+                    }))
+                }
             }
             await updateLatestSignedBlock(blk)
             await watchValidator()
@@ -461,16 +515,21 @@ async function watchNewBlock (n) {
     return watchNewBlock(n)
 }
 
-async function fireNotification (voter, candidate, name, event) {
+async function fireNotification (voter, candidate, name, event, blockNumber, amount = '') {
     try {
         const isRead = false
-        await db.Notification.create({
+        await db.Notification.findOneAndUpdate({
+            voter: voter,
+            candidate: candidate,
+            blockNumber: blockNumber
+        }, {
             voter: voter,
             candidate: candidate,
             candidateName: name || 'Anonymous',
             event: event,
-            isRead: isRead
-        })
+            isRead: isRead,
+            amount: amount
+        }, { upsert: true })
         return true
     } catch (error) {
         logger.error('fire notification error %s', error)
@@ -487,7 +546,6 @@ async function updateLatestSignedBlock (blk) {
     try {
         for (let hash of ((blk || {}).transactions || [])) {
             let tx = await web3Rpc.eth.getTransaction(hash)
-            console.log('blk>>>>>>>>>', tx.to, config.get('blockchain.blockSignerAddress'))
             if ((tx || {}).to === 'xdc' + config.get('blockchain.blockSignerAddress').substring(2)) {
                 let signer = tx.from
                 let buff = Buffer.from((tx.input || '').substring(2), 'hex')
@@ -498,7 +556,7 @@ async function updateLatestSignedBlock (blk) {
                     continue
                 }
                 logger.debug('Sign block %s by signer %s', bN, signer)
-                await db.Candidate.updateOne({
+                await db.Candidate.findOneAndUpdate({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: signer.toLowerCase()
                 }, {
@@ -544,7 +602,7 @@ async function getPastEvent () {
                 let capacity = event.returnValues._cap
                 let blk = await web3.eth.getBlock(event.blockNumber)
                 let createdAt = moment.unix(blk.timestamp).utc()
-                await db.Transaction.updateOne({ tx: event.transactionHash }, {
+                await db.Transaction.findOneAndUpdate({ tx: event.transactionHash }, {
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     tx: event.transactionHash,
                     blockNumber: event.blockNumber,
