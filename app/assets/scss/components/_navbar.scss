@@ -1,10 +1,16 @@
 .navbar {
     background-image: linear-gradient(-135deg, #FFFFFF 0%, #FFFFFF 100%);
-	border-bottom: 1px solid #c7dbe9;
-    box-shadow: 1px 0 15px rgba(0,0,0,.2);
+
+    &.navbar-light {
+        padding-top: 4px;
+    }
 
     > .container {
         align-items: center;
+        padding: 0;
+    }
+    &.navbar-expand {
+        flex-flow: inherit;
     }
 }
 
@@ -15,10 +21,19 @@
 }
 
 .navbar-buttons {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    display: flex;
     width: 100%;
     text-align: right;
     margin-top: 10px;
     margin-bottom: 7px;
+    button {
+        line-height: 1;
+        display: inline-flex;
+        vertical-align: middle;
+    }
 
     > a {
         display: inline-block;
@@ -44,7 +59,21 @@
     }
     
 }
-
+.btn-menu-sp {
+    border: 0!important;
+    background: transparent!important;
+    &:active,
+    &:focus {
+        border: 0!important;
+        background: transparent!important;
+        outline: none!important;
+        &:focus {
+            border: 0!important;
+            background: transparent!important;
+            outline: none!important;
+        }
+    }
+}
 #btn-setting {
     font-size: 0;
     width: 20px;
@@ -61,4 +90,82 @@
         color: $color-link !important;
         transform: rotate(45deg);
     }
+}
+
+.dd-setting {
+    i {
+        display: inline-block;
+        font-size: 18px;
+        color: #678be0;
+
+        @extend %transit;
+    }
+
+    &:hover i {
+        color: $color-link !important;
+        transform: rotate(45deg);
+    }
+    button {
+        border: none;
+        padding: 0;
+        padding-right: 0.75rem !important;
+        background: none!important;
+        &:hover {
+            background: none!important;
+            border-color: none;
+            text-decoration: none;
+        }
+        &:focus {
+            background: none!important;
+            border-color: none;
+            text-decoration: none;
+        }
+        &:active {
+            background: none!important;
+            text-decoration: none;
+            &:focus { 
+                background: none!important;
+            }
+        }
+    }
+}
+
+.masternode-bar,
+.candidate-reward-bar {
+    a {
+        text-align: center;
+        text-decoration: none;
+        white-space: pre-wrap;
+        cursor: pointer;
+
+        &:hover {
+            color: #30ddd8 !important;
+        }
+    }
+    a.tab-active {
+        color: #30ddd8;
+    }
+}
+
+.dd-address {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 15rem;
+
+    &:after {
+        position: absolute;
+        left: 100%;
+        top: 0;
+    }
+
+    @include media-breakpoint-only(sm) {
+        .text-truncate {
+            max-width: 15rem;
+        }
+    }
+}
+// add more to vue dropdown bootstrap
+.dropdown-menu {
+    margin-top: 17px;
 }

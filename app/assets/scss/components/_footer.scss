@@ -1,26 +1,29 @@
 .XDC-footer {
-  padding: 20px 0;
-  background-color: #FFFFFF;
-  border-top: 1px solid rgba(0,0,0,.06);
+  
+  margin-bottom: 20px;
 
   a {
-    color: #a9a6ad;
+    color: #7573a6;
   }
 
   a:hover {
-    color: #7573a6;
+    color: #cfcde1;
   }
 
   &__copyright {
     margin-bottom: 1rem;
 
     a {
-      color: #7573a6;
+      color: #6a8ae8;
     }
   }
 
   &__social {
     font-size: 18px;
+  }
+
+  &__links {
+    margin-top: 1rem;
   }
 
   @include media-breakpoint-up(md) {
