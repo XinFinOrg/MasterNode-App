@@ -4,9 +4,11 @@
     "port": 3001
   },
   "blockchain": {
-      "rpc": "https://rpc.xinfin.network",
-      "ws": "wss://mnws.xinfin.network",
-      "networkId": 50,
+      "rpc": "https://rpc.apothem.network",
+      "ws": "wss://mnws.apothem.network",
+      "internalRpc": "https://rpc.apothem.network",
+      "internalWs": "wss://mnws.apothem.network",
+      "networkId": 51,
       "epoch": 900,
       "blockTime": 2,
       "reward": 5000,
@@ -35,5 +37,11 @@
     "voterWithdrawDelay": 100,
     "epochNumber": 900
   },
-  "GA": "UA-124427827-2"
+  "GA": "UA-124427827-2",
+  "twitter": {
+    "consumer_key": "twittter-consumer-api-key",
+    "consumer_secret": "twittter-consumer-api-secret-key",
+    "access_token_key": "twittter-access-token-key",
+    "access_token_secret": "twittter-access-token-secret-key"
+}
 }

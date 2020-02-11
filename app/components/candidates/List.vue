@@ -54,6 +54,27 @@
                         >
                     </b-card>
                 </div>
+                <div
+                    class="col-md-6 col-lg-3">
+                    <b-card class="XDC-card XDC-card">
+                        <h6 class="XDC-card__title">Avg. Staking ROI</h6>
+                        <p class="XDC-card__text">
+                            {{ averageStakingROI ? averageStakingROI + '%' : '---' }}</p>
+                    </b-card>
+                </div>
+                <div
+                    class="col-md-6 col-lg-3">
+                    <b-card class="XDC-card XDC-card">
+                        <h6 class="XDC-card__title">Avg. Owner ROI</h6>
+                        <p class="XDC-card__text">
+                            <!-- eslint-disable-next-line max-len -->
+                            {{ averageOwnerROI ? averageOwnerROI + '%' : '---' }}</p>
+                        <img
+                            src="/app/assets/img/next_checkpoint-icon.png"
+                            class="XDC-card__img3"
+                        >
+                    </b-card>
+                </div>
             </div>
         </div>
 
@@ -97,6 +118,15 @@
         <div
             v-else
             class="container">
+            <b-pagination
+                v-if="mobileCheck && totalRows > 0 && totalRows > perPage"
+                :total-rows="totalRows"
+                :per-page="perPage"
+                v-model="currentPage"
+                align="center"
+                class="XDC-pagination"
+                style="margin-bottom: 50px !important;"
+                @change="pageChange"/>
             <b-table
                 :items="candidates"
                 :fields="fields"
@@ -140,9 +170,10 @@
                     slot-scope="data">
                     <div>
                         <span
-                            :class="`XDC-status-dot float-left mr-2 XDC-status-dot--${getColor(
-                            data.item.latestSignedBlock || 0, currentBlock)}`">
-                            {{ data.item.latestSignedBlock || 0 }}
+                            :class="`float-left mr-2 ${(data.item.status !== 'PROPOSED')
+                                ? ` XDC-status-dot XDC-status-dot--${getColor(
+                            data.item.latestSignedBlock || '', currentBlock)}` : '' }`">
+                            {{ data.item.latestSignedBlock }}
                         </span>
                     </div>
                 </template>
@@ -183,36 +214,13 @@ export default {
         return {
             chainConfig: {},
             fields: [
-                {
-                    key: 'address',
-                    label: 'Address',
-                    sortable: false
-                },
-                {
-                    key: 'name',
-                    label: 'Name',
-                    sortable: true
-                },
-                {
-                    key: 'capacity',
-                    label: 'Capacity',
-                    sortable: true
-                },
-                {
-                    key: 'latestSignedBlock',
-                    label: 'Latest Signed Block',
-                    sortable: true
-                },
-                {
-                    key: 'status',
-                    label: 'Status',
-                    sortable: false
-                },
-                {
-                    key: 'action',
-                    label: '',
-                    sortable: false
-                }
+                { key: 'rank', label: 'Rank' },
+                { key: 'address', label: 'Address', sortable: false },
+                { key: 'name', label: 'Name', sortable: false },
+                { key: 'capacity', label: 'Capacity', sortable: true },
+                { key: 'latestSignedBlock', label: 'Latest Signed Block', sortable: true },
+                { key: 'status', label: 'Status', sortable: false },
+                { key: 'action', label: '', sortable: false }
             ],
             sortBy: 'capacity',
             sortDesc: true,
@@ -222,7 +230,7 @@ export default {
             voteValue: 1,
             candidates: [],
             currentPage: this.$store.state.currentPage || 1,
-            perPage: 20,
+            perPage: 50,
             totalRows: 0,
             tableCssClass: '',
             loading: false,
@@ -233,30 +241,35 @@ export default {
             resignedMN: 0,
             slashedMN: 0,
             totalProposedNodes: 0,
-            currentTable: 'masternodes'
+            currentTable: 'masternodes',
+            averageStakingROI: '',
+            averageOwnerROI: '',
+            currentBlock: ''
         }
     },
-    computed: {},
+    computed: {
+        mobileCheck: () => {
+            const isAndroid = navigator.userAgent.match(/Android/i)
+            const isIOS = navigator.userAgent.match(/iPhone|iPad|iPod/i)
+            return (isAndroid || isIOS)
+        }
+    },
     watch: {},
     updated () {},
     created: async function () {
         let self = this
-        let account
         self.isReady = !!self.web3
-        let config = await self.appConfig()
+        const config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = config.blockchain
         self.currentBlock = self.chainConfig.blockNumber
 
         try {
             if (self.isReady) {
-                let contract = await self.getXDCValidatorInstance()
-                if (store.get('address')) {
-                    account = store.get('address').toLowerCase()
-                } else {
-                    account = this.$store.state.walletLoggedIn
-                        ? this.$store.state.walletLoggedIn : await self.getAccount()
-                }
-                if (account && contract) {
+                let contract// = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
+                self.account = store.get('address') ||
+                    self.$store.state.address || await self.getAccount()
+                if (self.account && contract) {
                     self.isXDCnet = true
                 }
             }
@@ -264,11 +277,13 @@ export default {
             console.log(error)
         }
         self.getDataFromApi()
+        // self.averageroi()
     },
     mounted () { },
     methods: {
         watch: async function () {
             let contract = await self.getXDCValidatorInstance()
+            contract = self.XDCValidator
             const allEvents = contract.allEvents({
                 fromBlock: self.blockNumber,
                 toBlock: 'latest'
@@ -346,7 +361,7 @@ export default {
                         isPenalty: candidate.isPenalty,
                         name: candidate.name || 'XinFin MasterNode',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock,
+                        latestSignedBlock: candidate.latestSignedBlock || 0,
                         rank: candidate.rank
                     })
                 })
@@ -399,7 +414,7 @@ export default {
                         isPenalty: candidate.isPenalty,
                         name: candidate.name || 'XinFin MasterNode',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: candidate.latestSignedBlock || 0
                     })
                 })
                 self.candidates = items
@@ -437,7 +452,7 @@ export default {
                         isPenalty: candidate.isPenalty,
                         name: candidate.name || 'XinFin MasterNode',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: '---' // candidate.latestSignedBlock
                     })
                 })
                 self.candidates = items
@@ -474,7 +489,7 @@ export default {
                         isPenalty: candidate.isPenalty,
                         name: candidate.name || 'XinFin MasterNode',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: candidate.latestSignedBlock || 0
                     })
                 })
                 self.candidates = items
@@ -514,6 +529,19 @@ export default {
                 this.getDataFromApi()
                 break
             }
+        },
+        async averageroi () {
+            axios.get('/api/voters/averageroi')
+                .then(result => {
+                    if (result.data && result.data.averageStakingROI) {
+                        this.averageStakingROI = result.data.averageStakingROI.toFixed(2)
+                        this.averageOwnerROI = result.data.averageOwnerROI.toFixed(2)
+                    }
+                })
+                .catch(error => {
+                    console.log(error)
+                    this.$toasted.show(error, { type: 'error' })
+                })
         }
     }
 }
