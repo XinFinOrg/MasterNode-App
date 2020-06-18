@@ -10,7 +10,7 @@
         "crawl-dev": "./node_modules/.bin/nodemon ./crawl.js",
         "server-dev": "npm run nodemon",
         "client-dev": "cross-env NODE_ENV=development webpack-dev-server --hot --host 0.0.0.0 --port 3000",
-        "start": "node index.js",
+        "start": "pm2 start index.js --name MasterNodeApp && pm2 start crawl.js --node-args='--max-old-space-size=1024' --name Crawl",
         "crawl": "node ./crawl.js",
         "webpack": "node ./node_modules/webpack/bin/webpack.js -d --w",
         "test": "./node_modules/.bin/truffle test",
