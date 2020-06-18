@@ -16,12 +16,12 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
 }
 
 router.post('/addKYC', async function (req, res, next) {
-    console.log(req.files)
-    console.log('File Name : ', req.files.filename)
+    // console.log(req.files)
+    // console.log('File Name : ', req.files.filename)
     let imageFile = req.files.filename
 
     xinFinClient.add(imageFile.data, async (err, ipfsHash) => {
-         if (err != null) {
+        if (err != null) {
             // error occured, log out the error
             console.error('Some error occured while adding KYC at /addKYC: ', err)
             res.status(500).send(err)
