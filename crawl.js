@@ -21,8 +21,8 @@ async function watchValidator () {
     var blockNumber = cpValidator || await web3.eth.getBlockNumber()
     try {
         blockNumber = blockNumber || await web3.eth.getBlockNumber()
-        logger.info('XDCValidator %s - Listen events from block number %s ...',
-            config.get('blockchain.validatorAddress'), blockNumber)
+        // logger.info('XDCValidator %s - Listen events from block number %s ...',
+        //     config.get('blockchain.validatorAddress'), blockNumber)
 
         cpValidator = await web3.eth.getBlockNumber()
 
@@ -32,7 +32,7 @@ async function watchValidator () {
         }).then(async events => {
             let map = events.map(async (event) => {
                 let result = event
-                logger.debug('Event %s in block %s', result.event, result.blockNumber)
+                // logger.debug('Event %s in block %s', result.event, result.blockNumber)
                 let candidate = (result.returnValues._candidate || '').toLowerCase()
                 let voter = (result.returnValues._voter || '').toLowerCase()
                 let owner = (result.returnValues._owner || '').toLowerCase()
@@ -140,7 +140,7 @@ async function updateCandidateInfo (candidate) {
         if (owner.substring(0, 2) === '0x') {
             owner = 'xdc' + owner.substring(2)
         }
-        logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
+        // logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
         if (candidate !== '0x0000000000000000000000000000000000000000') {
             // check current status
             const candateInDB = await db.Candidate.findOne({
@@ -181,7 +181,7 @@ async function updateCandidateInfo (candidate) {
 async function updateVoterCap (candidate, voter) {
     try {
         let capacity = await validator.methods.getVoterCap(candidate, voter).call()
-        logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
+        // logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
         if (voter.substring(0, 2) === '0x') {
             voter = 'xdc' + voter.substring(2)
         }
@@ -282,7 +282,7 @@ async function updateSignerPenAndStatus () {
                     }, { upsert: true })
                     break
                 case 'SLASHED':
-                    logger.info('Update candidate %s slashed at blockNumber %s', c.candidate, String(blk.number))
+                    // logger.info('Update candidate %s slashed at blockNumber %s', c.candidate, String(blk.number))
                     // fireNotification
                     if (result.toLowerCase() !== c.status.toLowerCase()) {
                         // get all voters who have capacity > 0
@@ -367,7 +367,7 @@ async function watchNewBlock (n) {
         if (blockNumber > n) {
             n = n + 1
             blockNumber = n
-            logger.info('Watch new block every 1 second blkNumber %s', n)
+            // logger.info('Watch new block every 1 second blkNumber %s', n)
             let blk = await web3.eth.getBlock(blockNumber)
             if (n % config.get('blockchain.epoch') === 10) {
                 await updateSignerPenAndStatus()
@@ -494,10 +494,10 @@ async function updateLatestSignedBlock (blk) {
                 let sbuff = buff.slice(buff.length - 32, buff.length)
                 let bN = ((await web3Rpc.eth.getBlock('0x' + sbuff.toString('hex'))) || {}).number
                 if (!bN) {
-                    logger.debug('Bypass signer %s sign %s', signer, '0x' + sbuff.toString('hex'))
+                    // logger.debug('Bypass signer %s sign %s', signer, '0x' + sbuff.toString('hex'))
                     continue
                 }
-                logger.debug('Sign block %s by signer %s', bN, signer)
+                // logger.debug('Sign block %s by signer %s', bN, signer)
                 await db.Candidate.updateOne({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: signer.toLowerCase()
@@ -517,7 +517,7 @@ async function getPastEvent () {
     let blockNumber = await web3.eth.getBlockNumber()
     let lastBlockTx = await db.Transaction.findOne().sort({ blockNumber: -1 })
     let lb = (lastBlockTx && lastBlockTx.blockNumber) ? lastBlockTx.blockNumber : 0
-    logger.debug('Get all past event from block', lb, 'to block', blockNumber)
+    // logger.debug('Get all past event from block', lb, 'to block', blockNumber)
     validator.getPastEvents('allEvents', { fromBlock: lb, toBlock: blockNumber }, async function (error, events) {
         if (error) {
             logger.error(error)
