@@ -222,7 +222,7 @@ export default {
             voteValue: 1,
             candidates: [],
             currentPage: this.$store.state.currentPage || 1,
-            perPage: 20,
+            perPage: 50,
             totalRows: 0,
             tableCssClass: '',
             loading: false,
