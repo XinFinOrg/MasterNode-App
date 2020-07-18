@@ -1,7 +1,7 @@
 {
   "server": {
     "host": "0.0.0.0",
-    "port": 3000
+    "port": 3001
   },
   "blockchain": {
       "rpc": "https://mnrpc.xinfin.network",
@@ -19,7 +19,7 @@
       "randomizeAddress": "0x0000000000000000000000000000000000000090"
   },
   "db": {
-    "uri": "mongodb://192.168.1.1:27017/MainNetMNApp"
+    "uri": "mongodb://localhost:27017/MainNetMNApp"
   },
   "explorerUrl": "http://localhost:3003",
   "grafanaUrl": "http://localhost:8000",
