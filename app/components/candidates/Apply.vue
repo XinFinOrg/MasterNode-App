@@ -218,7 +218,7 @@ export default {
         return {
             account: '',
             isReady: !!this.web3,
-            applyValue: '10000000',
+            applyValue: '9999999',
             coinbase: '',
             // nodeUrl: '',
             loading: false,
@@ -239,7 +239,7 @@ export default {
     validations: {
         applyValue: {
             required,
-            minValue: minValue(10000000)
+            minValue: minValue(9999999)
         },
         coinbase: {
             required,
