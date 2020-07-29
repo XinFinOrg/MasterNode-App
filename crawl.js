@@ -390,7 +390,6 @@ async function watchNewBlock (n) {
                         db.Rank.updateOne({ candidate: c.candidate, epoch: latestEpoch }, {
                             epoch: latestEpoch,
                             candidate: c.candidate,
-                            rank: i + 1,
                             epochCreatedAt: moment.unix(block.timestamp).utc()
                         }, { upsert: true }).then(() => { return true })
                             .catch(e => logger.error('update rank history %s', e))

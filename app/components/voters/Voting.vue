@@ -186,7 +186,7 @@ export default {
             isReady: !!this.web3,
             voter: 'Unknown',
             candidate: this.$route.params.candidate,
-            voteValue: '100',
+            voteValue: '25000',
             loading: false,
             step: 1,
             message: '',
@@ -204,7 +204,7 @@ export default {
     validations: {
         voteValue: {
             required,
-            minValue: minValue(100)
+            minValue: minValue(25000)
         }
     },
     computed: {
@@ -235,6 +235,7 @@ export default {
             if (account) {
                 self.voter = account
             }
+            console.log(self.voter, 'self.voter')
             self.web3.eth.getBalance(self.voter, function (a, b) {
                 self.balance = new BigNumber(b).div(10 ** 18)
                 if (a) {
@@ -299,6 +300,7 @@ export default {
                 self.loading = true
                 let account = await self.getAccount()
                 account = account.toLowerCase()
+                console.log(account, 'account')
                 let contract = await self.getXDCValidatorInstance()
                 let txParams = {
                     from: account,
@@ -309,33 +311,11 @@ export default {
                     chainId: self.chainConfig.networkId
                 }
                 let rs
-                if (self.NetworkProvider === 'ledger' ||
-                    self.NetworkProvider === 'trezor') {
-                    // check if network provider is hardware wallet
-                    // sign transaction using hardwarewallet before sending to chain
+                self.candidate = '0x' + self.candidate.substring(2)
+                console.log(self.candidate, 'self.candidate')
+                rs = await contract.vote(self.candidate, txParams)
+                console.log(rs, 'rs')
 
-                    // https://bit.ly/2KEXzQe
-                    // signing and sending processes
-                    //
-                    //
-                    // login device
-                    // sign transaction with function and parameter to get signature
-                    // attach txParams and signature then sendSignedTransaction
-                    let nonce = await self.web3.eth.getTransactionCount(account)
-                    let dataTx = contract.vote.request(self.candidate).params[0]
-                    Object.assign(
-                        dataTx,
-                        dataTx,
-                        txParams,
-                        {
-                            nonce: self.web3.utils.toHex(nonce)
-                        }
-                    )
-                    let signature = await self.signTransaction(dataTx)
-                    rs = await self.sendSignedTransaction(dataTx, signature)
-                } else {
-                    rs = await contract.vote(self.candidate, txParams)
-                }
                 let toastMessage = rs.tx ? 'You have successfully voted!'
                     : 'An error occurred while voting, please try again'
                 self.$toasted.show(toastMessage)

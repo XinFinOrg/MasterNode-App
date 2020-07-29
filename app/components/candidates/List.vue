@@ -159,6 +159,15 @@
                         </span>
                     </div>
                 </template>
+                <template
+                    slot="action"
+                    slot-scope="data">
+                    <b-button
+                        v-if="data.item.status === 'PROPOSED' || data.item.status === 'MASTERNODE'"
+                        variant="primary"
+                        class="mt-3 mt-lg-0 vote-btn"
+                        @click="onRowClick(data.item.address)">Vote</b-button>
+                </template>
             </b-table>
             <b-pagination
                 v-if="totalRows > 0 && totalRows > perPage"
