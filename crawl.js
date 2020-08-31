@@ -216,7 +216,7 @@ async function updateCandidateInfo (candidate) {
 async function updateVoterCap (candidate, voter) {
     try {
         let capacity = await validator.methods.getVoterCap(candidate, voter).call()
-         logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
+        logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
         if (voter.substring(0, 2) === '0x') {
             voter = 'xdc' + voter.substring(2)
         }
