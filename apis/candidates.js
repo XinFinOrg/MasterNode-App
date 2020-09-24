@@ -91,7 +91,7 @@ router.get('/masternodes', [
     try {
         const activeCandidates = db.Candidate.countDocuments({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: { $nin: ['RESIGNED', 'PROPOSED'] }
+            status: { $nin: ['RESIGNED', 'STANDBY'] }
         })
 
         const totalSlashed = db.Candidate.countDocuments({
@@ -106,7 +106,7 @@ router.get('/masternodes', [
 
         const totalProposed = db.Candidate.countDocuments({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: 'PROPOSED'
+            status: 'STANDBY'
         }).lean().exec()
 
         const sort = {}
@@ -123,7 +123,7 @@ router.get('/masternodes', [
 
         const candidates = await db.Candidate.find({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: { $nin: ['RESIGNED', 'PROPOSED'] }
+            status: { $nin: ['RESIGNED', 'STANDBY'] }
         }).sort(sort).limit(limit).skip(skip).lean().exec()
 
         return res.json({
@@ -211,12 +211,12 @@ router.get('/proposedMNs', [
 
         const total = db.Candidate.countDocuments({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: 'PROPOSED'
+            status: 'STANDBY'
         }).lean().exec()
 
         let candidates = await db.Candidate.find({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: 'PROPOSED'
+            status: 'STANDBY'
         }).sort(sort).limit(limit).skip(skip).lean().exec()
 
         return res.json({
@@ -457,7 +457,7 @@ router.post('/apply', async function (req, res, next) {
                     candidate: candidate,
                     nodeId: (candidate || '').replace('0x', ''),
                     capacity: '50000000000000000000000',
-                    status: 'PROPOSED',
+                    status: 'STANDBY',
                     owner: walletProvider.address,
                     name: req.query.name
                 }
@@ -504,7 +504,7 @@ router.post('/applyBulk', async function (req, res, next) {
                             smartContractAddress: config.get('blockchain.validatorAddress'),
                             candidate: candidate,
                             capacity: '50000000000000000000000',
-                            status: 'PROPOSED',
+                            status: 'STANDBY',
                             owner: walletProvider.address
                         }
                     }, { upsert: true })

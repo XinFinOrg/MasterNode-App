@@ -63,7 +63,7 @@ async function watchValidator () {
                     await db.Status.updateOne({ epoch: currentEpoch, candidate: candidate }, {
                         epoch: currentEpoch,
                         candidate: candidate,
-                        status: 'PROPOSED',
+                        status: 'STANDBY',
                         epochCreatedAt: createdAt
                     }, { upsert: true })
                 }
@@ -148,7 +148,7 @@ async function updateCandidateInfo (candidate) {
                 candidate: candidate
             }) || {}
             status = (status)
-                ? ((candateInDB.status === 'RESIGNED') ? 'PROPOSED' : (candateInDB.status || 'PROPOSED'))
+                ? ((candateInDB.status === 'RESIGNED') ? 'STANDBY' : (candateInDB.status || 'STANDBY'))
                 : 'RESIGNED'
             result = await db.Candidate.updateOne({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
@@ -317,19 +317,19 @@ async function updateSignerPenAndStatus () {
                         .catch(error => console.log(error))
                     penalties.push(c.candidate)
                     break
-                case 'PROPOSED':
+                case 'STANDBY':
                     await db.Candidate.updateOne({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
                         candidate: c.candidate.toLowerCase()
                     }, {
                         $set: {
-                            status: 'PROPOSED'
+                            status: 'STANDBY'
                         }
                     }, { upsert: true })
                     await db.Status.updateOne({ epoch: currentEpoch, candidate: c.candidate }, {
                         epoch: currentEpoch,
                         candidate: c.candidate,
-                        status: 'PROPOSED',
+                        status: 'STANDBY',
                         epochCreatedAt: moment.unix(blk.timestamp).utc()
                     }, { upsert: true })
                     break
@@ -375,7 +375,7 @@ async function watchNewBlock (n) {
                 {
                     const candidates = await db.Candidate.find({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
-                        status: { $nin: ['RESIGNED', 'PROPOSED'] }
+                        status: { $nin: ['RESIGNED', 'STANDBY'] }
                     }).sort({ capacityNumber: -1 })
 
                     await Promise.all(candidates.map(async (c, i) => {
@@ -402,13 +402,13 @@ async function watchNewBlock (n) {
                 // get candidate's cap
                 const candidates = await db.Candidate.find({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
-                    status: { $nin: ['RESIGNED', 'PROPOSED'] }
+                    status: { $nin: ['RESIGNED', 'STANDBY'] }
                 }).sort({ capacityNumber: -1 })
 
                 // get top 150 before updating
                 const oldTop150 = await db.Candidate.find({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
-                    status: { $nin: ['RESIGNED', 'PROPOSED'] },
+                    status: { $nin: ['RESIGNED', 'STANDBY'] },
                     rank: { $ne: null }
                 })
                 // check changing in top 150 to fire notification
