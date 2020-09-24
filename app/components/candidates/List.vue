@@ -71,15 +71,15 @@
                                     @click="changeTable('masternodes')">Masternodes ({{ activeCandidates }})</a>
                                 <span v-if="slashedMN !== 0">|</span>
                                 <a
+                                    v-if="totalProposedNodes !== 0"
+                                    :class="currentTable === 'proposed' ? 'tab-active' : ''"
+                                    @click="changeTable('proposed')">Standby Nodes ({{ totalProposedNodes }})</a>
+                                <span v-if="resignedMN !== 0">|</span>
+                                <a
                                     v-if="slashedMN !== 0"
                                     :class="currentTable === 'slashed' ? 'tab-active' : ''"
                                     @click="changeTable('slashed')">Slashed MNs ({{ slashedMN }})</a>
                                 <span v-if="totalProposedNodes !== 0">|</span>
-                                <a
-                                    v-if="totalProposedNodes !== 0"
-                                    :class="currentTable === 'proposed' ? 'tab-active' : ''"
-                                    @click="changeTable('proposed')">Proposed Nodes ({{ totalProposedNodes }})</a>
-                                <span v-if="resignedMN !== 0">|</span>
                                 <a
                                     v-if="resignedMN !== 0"
                                     :class="currentTable === 'resigned' ? 'tab-active' : ''"
