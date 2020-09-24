@@ -116,7 +116,7 @@ async function updateStatus (fromEpoch, toEpoch) {
                     {
                         epoch: i,
                         candidate: m,
-                        status: 'PROPOSED',
+                        status: 'STANDBY',
                         epochCreatedAt: epochCreatedAt
                     },
                     { upsert: true }).then(() => { return true }).catch(e => console.log(e))

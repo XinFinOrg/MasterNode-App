@@ -153,7 +153,7 @@
                     <div class="mt-2 mt-lg-0">
                         <span
                             :class="'XDC-chip '
-                                + (data.item.status === 'PROPOSED' || data.item.status === 'MASTERNODE' ?
+                                + (data.item.status === 'STANDBY' || data.item.status === 'MASTERNODE' ?
                             'XDC-chip--primary' : 'XDC-chip--accent') ">
                             {{ data.item.status.toUpperCase() }}
                         </span>
