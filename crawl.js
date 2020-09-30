@@ -129,7 +129,8 @@ async function watchValidator () {
 
 async function updateCandidateInfo (candidate) {
     try {
-        let capacity = await validator.methods.getCandidateCap(candidate).call()
+        let capacity = 10000000000000000000000000
+        // let capacity = await validator.methods.getCandidateCap(candidate).call()
         let owner = (await validator.methods.getCandidateOwner(candidate).call() || '').toLowerCase()
         let status = await validator.methods.isCandidate(candidate).call()
         let result
@@ -140,7 +141,7 @@ async function updateCandidateInfo (candidate) {
         if (owner.substring(0, 2) === '0x') {
             owner = 'xdc' + owner.substring(2)
         }
-        // logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
+        logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
         if (candidate !== '0x0000000000000000000000000000000000000000') {
             // check current status
             const candateInDB = await db.Candidate.findOne({
@@ -180,7 +181,8 @@ async function updateCandidateInfo (candidate) {
 
 async function updateVoterCap (candidate, voter) {
     try {
-        let capacity = await validator.methods.getVoterCap(candidate, voter).call()
+        // let capacity = await validator.methods.getVoterCap(candidate, voter).call()
+        let capacity = 10000000000000000000000000
         // logger.debug('Update voter %s for candidate %s capacity %s', voter, candidate, String(capacity))
         if (voter.substring(0, 2) === '0x') {
             voter = 'xdc' + voter.substring(2)
