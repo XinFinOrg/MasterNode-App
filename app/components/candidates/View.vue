@@ -291,7 +291,7 @@
                     class="XDC-pagination"
                     @change="rewardPageChange" />
             </div> -->
-            <div
+            <!-- <div
                 :class="'container section section-voters'
                 + (voterLoading ? ' XDC-loading' : '')">
                 <div class="row">
@@ -343,8 +343,8 @@
                     align="center"
                     class="XDC-pagination"
                     @change="voterPageChange" />
-            </div>
-            <div
+            </div> -->
+            <!-- <div
                 :class="'container section section--txs'
                 + (txLoading ? ' XDC-loading' : '')">
                 <div class="row">
@@ -425,7 +425,7 @@
                     align="center"
                     class="XDC-pagination"
                     @change="txPageChange"/>
-            </div>
+            </div> -->
         </div>
     </div>
 </template>
