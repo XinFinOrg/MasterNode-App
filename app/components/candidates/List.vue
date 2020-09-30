@@ -66,6 +66,11 @@
                             <span>Candidates</span>
                             <span class="text-truncate section-title__description">
                                 <a
+                                    v-if="totalProposedNodes !== 0"
+                                    :class="currentTable === 'activeTotalCandidates' ? 'tab-active' : ''"
+                                    @click="changeTable('activeTotalCandidates')">Total MasterNodes ({{ activeTotalCandidates }})</a>
+                                <span v-if="resignedMN !== 0">|</span>
+                                <a
                                     v-if="activeCandidates !== 0"
                                     :class="currentTable === 'masternodes' ? 'tab-active' : ''"
                                     @click="changeTable('masternodes')">Masternodes ({{ activeCandidates }})</a>
@@ -159,6 +164,14 @@
                         </span>
                     </div>
                 </template>
+                <!-- <template
+                    slot="action"
+                    slot-scope="data">
+                    <b-button
+                        variant="primary"
+                        class="mt-3 mt-lg-0 vote-btn"
+                        @click="onRowClick(data.item.address)">Vote</b-button>
+                </template> -->
             </b-table>
             <b-pagination
                 v-if="totalRows > 0 && totalRows > perPage"
@@ -353,6 +366,7 @@ export default {
                 self.candidates = items
 
                 self.activeCandidates = candidates.data.activeCandidates
+                self.activeTotalCandidates = candidates.data.activeCandidates + candidates.data.totalProposed
                 self.totalRows = candidates.data.activeCandidates
                 self.resignedMN = candidates.data.totalResigned
                 self.totalProposedNodes = candidates.data.totalProposed
