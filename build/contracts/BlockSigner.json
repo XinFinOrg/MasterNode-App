@@ -91,9 +91,9 @@
   "sourceMap": "57:901:0:-;;;316:93;8:9:-1;5:2;;;30:1;27;20:12;5:2;316:93:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;390:12;376:11;:26;;;;316:93;57:901;;;;;;",
   "deployedSourceMap": "57:901:0:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;415:416;;8:9:-1;5:2;;;30:1;27;20:12;5:2;415:416:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;837:119;;8:9:-1;5:2;;;30:1;27;20:12;5:2;837:119:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;23:1:-1;8:100;33:3;30:1;27:10;8:100;;;99:1;94:3;90:11;84:18;80:1;75:3;71:11;64:39;52:2;49:1;45:10;40:15;;8:100;;;12:14;837:119:0;;;;;;;;;;;;;;;;;283:26;;8:9:-1;5:2;;;30:1;27;20:12;5:2;283:26:0;;;;;;;;;;;;;;;;;;;;;;;415:416;587:12;571;:28;;563:37;;;;;;;;634:33;665:1;651:11;;:15;634:12;:16;;:33;;;;:::i;:::-;618:12;:49;;610:58;;;;;;;;678:6;:20;685:12;678:20;;;;;;;;;;;704:10;678:37;;39:1:-1;33:3;27:10;23:18;57:10;52:3;45:23;79:10;72:17;;0:93;678:37:0;;;;;;;;;;;;;;;;;;;;;;;;;;;725:12;:24;738:10;725:24;;;;;;;;;;;;;;;;;755:10;725:41;;39:1:-1;33:3;27:10;23:18;57:10;52:3;45:23;79:10;72:17;;0:93;725:41:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;782:42;787:10;799:12;813:10;782:42;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;415:416;;:::o;837:119::-;897:9;925:12;:24;938:10;925:24;;;;;;;;;;;;;;;;;918:31;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;837:119;;;:::o;283:26::-;;;;:::o;1013:129:3:-;1071:7;1086:9;1102:1;1098;:5;1086:17;;1121:1;1116;:6;;1109:14;;;;;;1136:1;1129:8;;1013:129;;;;;:::o",
   "source": "pragma solidity ^0.4.21;\n\nimport \"./libs/SafeMath.sol\";\n\ncontract BlockSigner {\n    using SafeMath for uint256;\n\n    event Sign(address _signer, uint256 _blockNumber, bytes32 _blockHash);\n\n    mapping(bytes32 => address[]) blockSigners;\n    mapping(uint256 => bytes32[]) blocks;\n    uint256 public epochNumber;\n\n    function BlockSigner(uint256 _epochNumber) public {\n        epochNumber = _epochNumber;\n    }\n\n    function sign(uint256 _blockNumber, bytes32 _blockHash) external {\n        // consensus should validate all senders are validators, gas = 0\n        require(block.number >= _blockNumber);\n        require(block.number <= _blockNumber.add(epochNumber * 2));\n        blocks[_blockNumber].push(_blockHash);\n        blockSigners[_blockHash].push(msg.sender);\n\n        emit Sign(msg.sender, _blockNumber, _blockHash);\n    }\n\n    function getSigners(bytes32 _blockHash) public view returns(address[]) {\n        return blockSigners[_blockHash];\n    }\n}\n",
-  "sourcePath": "/home/vagrant/projects/masternode-app/contracts/BlockSigner.sol",
+  "sourcePath": "/home/vagrant/projects/masternodeapp/contracts/BlockSigner.sol",
   "ast": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/BlockSigner.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/BlockSigner.sol",
     "exportedSymbols": {
       "BlockSigner": [
         98
@@ -114,7 +114,7 @@
         "src": "0:24:0"
       },
       {
-        "absolutePath": "/home/vagrant/projects/masternode-app/contracts/libs/SafeMath.sol",
+        "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/libs/SafeMath.sol",
         "file": "./libs/SafeMath.sol",
         "id": 2,
         "nodeType": "ImportDirective",
@@ -1358,7 +1358,7 @@
     "src": "0:959:0"
   },
   "legacyAST": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/BlockSigner.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/BlockSigner.sol",
     "exportedSymbols": {
       "BlockSigner": [
         98
@@ -1379,7 +1379,7 @@
         "src": "0:24:0"
       },
       {
-        "absolutePath": "/home/vagrant/projects/masternode-app/contracts/libs/SafeMath.sol",
+        "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/libs/SafeMath.sol",
         "file": "./libs/SafeMath.sol",
         "id": 2,
         "nodeType": "ImportDirective",
@@ -2627,25 +2627,25 @@
     "version": "0.4.24+commit.e67f0147.Emscripten.clang"
   },
   "networks": {
-    "853": {
+    "88": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000089",
       "transactionHash": "0x02f05f18b3817d9e5ae4359c098704a04c49f14d90cfed2abda8bb9ebfa400af"
     },
-    "853": {
+    "89": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000089",
       "transactionHash": "0x02f05f18b3817d9e5ae4359c098704a04c49f14d90cfed2abda8bb9ebfa400af"
     },
-    "853": {
+    "90": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000089",
       "transactionHash": "0x02f05f18b3817d9e5ae4359c098704a04c49f14d90cfed2abda8bb9ebfa400af"
     },
-    "853": {
+    "1532931637365": {
       "events": {},
       "links": {},
       "address": "0x85ea1bba62ed3ae63cdf526de78f60e42458db13",

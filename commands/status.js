@@ -2,7 +2,7 @@
 const Validator = require('../models/blockchain/validator')
 const config = require('config')
 const moment = require('moment')
-const web3Rpc = require('../models/blockchain/web3rpc')
+const web3Rpc = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const logger = require('../helpers/logger')
 const db = require('../models/mongodb')
 var validator = new Validator(web3Rpc)
@@ -29,9 +29,11 @@ async function updateStatus (fromEpoch, toEpoch) {
             } else {
                 throw Error('Should crawl from further, input epoch does not exist')
             }
-        } else {
-            fromEpoch = 1
-            await db.Status.remove({})
+        }
+        if (!fromEpoch) {
+            throw Error('Need fromEpoch(-f) argument')
+            // fromEpoch = 1
+            // await db.Status.remove({})
         }
         logger.info('Crawling from %s to %s', fromEpoch, toEpoch)
         for (let i = fromEpoch; i <= toEpoch; i++) {

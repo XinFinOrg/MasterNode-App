@@ -1,196 +1,209 @@
 <template>
-    <div class="container">
-        <b-row
-            align-v="center"
-            align-h="center"
-            class="m-0">
-            <b-card
-                :class="'col-12 col-md-8 col-lg-6 XDC-card XDC-card--lighter p-0'
-                + (loading ? ' XDC-loading' : '')">
-                <h4 class="color-white XDC-card__title XDC-card__title--big"><strong>Become a MasterNode</strong></h4>
-                <template v-if="!KYC.status">
-                    <ul class="XDC-list list-unstyled">
-                        <li class="XDC-list__item">
-                            <!-- <i class="tm-XDC XDC-list__icon" /> -->
-                            <div class="XDC-list__text">
-                                <!-- <p class="XDC-list__textMargin">Attach Scan copy of  "KYC Certification." (.pdf file extension) </p>
-                                <p class="XDC-list__textMargin">Format Sample (may vary depending on country)</p>
-                                <p class="XDC-list__textMargin">Who can Certified?  </p>
-                                <p class="XDC-list__textMargin">person giving the certification Must</p>
-                                <br><br>
-                                <h3 class="">This KYC document needs to be certified by an appropriate Authority like:</h3><br>
-                                <p class="XDC-list__textMargin">A qualified lawyer or attorney, registered with the relevant national professional body
-                                </p>
-                                <p class="XDC-list__textMargin">A notary public, a member of the judiciary, a senior civil servant or a serving police officer</p>
-                                <p class="XDC-list__textMargin">A chartered secretary, registered with the Institute of Chartered Secretaries</p>
-                                <p class="XDC-list__textMargin">An Embassy, consulate or high commission officer in the country of issue Certification Requirements</p> <br>
-                                <h3>The person giving the certification:</h3> <br>
-                                <p class="XDC-list__textMargin">Must use a firm's’ stamp or, if not available, provide an accompanying letter on company letterhead confirming which documents have been certified.</p>
-                                <p class="XDC-list__textMargin">Must provide the certification (including the firms stamp if used) directly on the copy of each document including-“Certified to be a true copy of the original seen by me”</p><br>
-                                <ul>
-                                    <li><p class="XDC-list__textMargin">Print his/her name clearly in capitals-Sign and date the copy document</p></li>
-                                    <li><p class="XDC-list__textMargin">Clearly indicate his/her position or capacity</p></li>
-                                    <li><p class="XDC-list__textMargin">Provide the name and address of the firm that they are employed by</p></li>
-                                    <li><p class="XDC-list__textMargin">Provide the name of the institution that they are a member of together with their membership number</p></li>
-                                </ul>
-                                <br>
-                                <p class="XDC-list__textMargin">Documents that have been certified on the reverse of the document’s copy are not acceptable. The certifiers need to certify the pages that contain the copies of your documents.</p>
-                                <p class="XDC-list__textMargin">Note: Public Network will share your KYC  certification with the general Public in order to verify node identity.</p> -->
-                                <p class="graf graf--p graf-after--figure"><strong class="markup--strong markup--p-strong"> Become a MasterNode </strong>and upload the <strong class="markup--strong markup--p-strong">Know Your Community (KYC) certificate</strong> in PDF format.</p>
-                                <p class="graf graf--p graf-after--p">This KYC certificate needs to be signed by one of the following personnel:</p>
-                                <ul class="postList"><li>Company Secretary,</li><li>A Notary Public,</li><li>Chartered Secretary,</li><li >Consulate, or</li><li>A lawyer with Seal.</li></ul>
-                                <p class="graf graf--p graf-after--li">For <strong class="markup--strong markup--p-strong">INDIVIDUAL format</strong>, <a href="https://docs.google.com/document/d/1Us9chjXEDYrDOpfuwWITxaQOSEYxYIpJpwWuYK0TyXY" ><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
-                                <p>For <strong class="markup--strong markup--p-strong">ORGANIZATION format</strong>, <a href="https://docs.google.com/document/d/1eyjFp3DXhrpLscngELocmXFwJ_Y8H9si6n8Z2SLADhg"><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
-                                <p><em class="markup--em markup--p-em">Note: It’s mandatory to upload the certificate in a </em><strong class="markup--strong markup--p-strong"><em class="markup--em markup--p-em">PDF format</em></strong><em class="markup--em markup--p-em">.</em></p>
-                            </div>
-                        </li>
-                        <!-- <li class="XDC-list__item">
-                            <i class="tm-lock XDC-list__icon" />
-                            <span class="XDC-list__text">Create PDF file with mention Certify KYC document.</span>
-                        </li> -->
-                        <!-- <li class="XDC-list__item">
-                            <i class="tm-arrow-up XDC-list__icon" />
-                            <span class="XDC-list__text">
-                                Coin holders are able to vote for you to become a masternode</span>
-                        </li> -->
-                    </ul>
-                    <b-form
-                        class="XDC-form XDC-form--apply"
-                        novalidate
-                        enctype="multipart/form-data"
-                        @submit.prevent="uploadKYC()">
-                        <b-form-file
-                            v-model="KYC.file"
-                            :state="Boolean(KYC.file)"
-                            class="z-index-0"
-                            accept="application/pdf"
-                            placeholder="Choose a file..."
-                            required
-                        />
-                        <span
-                            v-if="KYC && !KYC.file"
-                            class="text-danger">Required field (only *.pdf allowed)</span>
-                        <div class="buttons text-right">
-                            <b-button
-                                type="submit"
-                                variant="primary">Upload KYC</b-button>
+    <div>
+        <div
+            class="XDC-header">
+            <div class="container">
+                <div class="XDC-header-block">
+                    <div class="XDC-header-block-left">
+                        <div>
+                            <i class="tm-wallet XDC-header__icon" />
                         </div>
-                    </b-form>
-                </template>
-                <template v-else>
-                    <ul class="XDC-list list-unstyled">
-                        <li class="XDC-list__item">
-                            <i class="tm-XDC XDC-list__icon" />
-                            <span class="XDC-list__text">You have to deposit at least 10,000,000 XDC</span>
-                        </li>
-                        <li class="XDC-list__item">
-                            <i class="tm-lock XDC-list__icon" />
-                            <span class="XDC-list__text">Your deposit will be locked</span>
-                        </li>
-                    </ul>
+                        <div>
+                            <h4 class="h4 color-black">Become a MasterNode</h4>
+                            <p>
+                                Become a MasterNode and upload the Know Your Community (KYC) certificate in PDF format.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content container">
+            <b-row
+                class="m-0">
+                <div class="col-12 col-md-6 col-lg-6">
+                    <b-card
+                        :class="'XDC-card XDC-card--lighter'
+                        + (loading ? ' XDC-loading' : '')">
+                        <h4 class="h4 color-black XDC-card__title"><strong>Become a MasterNode</strong></h4>
+                        <template v-if="!KYC.status">
+                            <ul class="XDC-list list-unstyled">
+                                <li class="XDC-list__item">
+                                    <!-- <i class="tm-XDC XDC-list__icon" /> -->
+                                    <div class="XDC-list__text">
+                                        <p class="graf graf--p graf-after--figure"><strong class="markup--strong markup--p-strong"> Become a MasterNode </strong>and upload the <strong class="markup--strong markup--p-strong">Know Your Community (KYC) certificate</strong> in PDF format.</p>
+                                        <p class="graf graf--p graf-after--p">This KYC certificate needs to be signed by one of the following personnel:</p>
+                                        <ul class="postList"><li>Company Secretary,</li><li>A Notary Public,</li><li>Chartered Secretary,</li><li >Consulate, or</li><li>A lawyer with Seal.</li></ul>
+                                        <p class="graf graf--p graf-after--li">For <strong class="markup--strong markup--p-strong">INDIVIDUAL format</strong>, <a href="https://docs.google.com/document/d/1Us9chjXEDYrDOpfuwWITxaQOSEYxYIpJpwWuYK0TyXY" ><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
+                                        <p>For <strong class="markup--strong markup--p-strong">ORGANIZATION format</strong>, <a href="https://docs.google.com/document/d/1eyjFp3DXhrpLscngELocmXFwJ_Y8H9si6n8Z2SLADhg"><strong class="markup--strong markup--p-strong">click here</strong></a>.</p>
+                                        <p><em class="markup--em markup--p-em">Note: It’s mandatory to upload the certificate in a </em><strong class="markup--strong markup--p-strong"><em class="markup--em markup--p-em">PDF format</em></strong><em class="markup--em markup--p-em">.</em></p>
+                                    </div>
+                                </li>
+                                <!-- <li class="XDC-list__item">
+                                    <i class="tm-lock XDC-list__icon" />
+                                    <span class="XDC-list__text">Create PDF file with mention Certify KYC document.</span>
+                                </li> -->
+                                <!-- <li class="XDC-list__item">
+                                    <i class="tm-arrow-up XDC-list__icon" />
+                                    <span class="XDC-list__text">
+                                        Coin holders are able to vote for you to become a masternode</span>
+                                </li> -->
+                            </ul>
+                        </template>
+                        <template v-else>
+                            <ul class="XDC-list list-unstyled">
+                                <li class="XDC-list__item">
+                                    <i class="tm-XDC XDC-list__icon" />
+                                    <span class="XDC-list__text">You have to deposit at least 10,000,000 XDC</span>
+                                </li>
+                                <li class="XDC-list__item">
+                                    <i class="tm-lock XDC-list__icon" />
+                                    <span class="XDC-list__text">Your deposit will be locked</span>
+                                </li>
+                            </ul>
 
-                    <b-form
-                        class="XDC-form XDC-form--apply"
-                        novalidate
-                        @submit.prevent="validate()">
-                        <b-form-group
-                            :description="`How much XDC do you want to deposit? TX fee: ${txFee} XDC`"
-                            label="Stake"
-                            label-for="apply-value">
-                            <b-input-group>
-                                <number-input
-                                    :class="getValidationClass('applyValue')"
-                                    :min="0.1"
-                                    :step="0.1"
-                                    v-model="applyValue"
-                                    name="apply-value"/>
-                                <b-input-group-append>
-                                    <i class="tm-XDC" />
-                                </b-input-group-append>
+                            <b-form
+                                class="XDC-form XDC-form--apply"
+                                novalidate
+                                @submit.prevent="validate()">
+                                <b-form-group
+                                    :description="`How much XDC do you want to deposit? TX fee: ${txFee} XDC`"
+                                    label="Stake"
+                                    label-for="apply-value">
+                                    <b-input-group>
+                                        <p class="form-control">{{ applyValue }}</p>
+                                        <!--<number-input
+                                            :class="getValidationClass('applyValue')"
+                                            :min="0.1"
+                                            :step="0.1"
+                                            v-model="applyValue"
+                                            name="apply-value"/>-->
+                                        <b-input-group-append>
+                                            <i class="tm-XDC" />
+                                        </b-input-group-append>
+                                        <span
+                                            v-if="$v.applyValue.$dirty && !$v.applyValue.required"
+                                            class="text-danger">Required field</span>
+                                        <span
+                                            v-else-if="$v.applyValue.$dirty && !$v.applyValue.minValue"
+                                            class="text-danger">Must be greater than 10,000,000 XDC</span>
+                                    </b-input-group>
+                                </b-form-group>
+                                <b-form-group
+                                    label="Coinbase Address"
+                                    label-for="coinbase"
+                                    description="What is your node coinbase address?">
+                                    <b-form-input
+                                        :class="getValidationClass('coinbase')"
+                                        v-model="coinbase"
+                                        name="coinbase"
+                                        autocomplete="off"
+                                        type="text"/>
+                                    <span
+                                        v-if="$v.coinbase.$dirty && !$v.coinbase.required"
+                                        class="text-danger">Required field</span>
+                                    <span
+                                        v-else-if="!$v.coinbase.coinbaseAddress"
+                                        class="text-danger">Wrong coinbase address format</span>
+                                    <span
+                                        v-else-if="coinbaseError"
+                                        class="text-danger">
+                                        The masternode candidate account should be different from the depositing account.
+                                    </span>
+                                    <span
+                                        v-else-if="candidateError"
+                                        class="text-danger">
+                                        This coinbase address is already a candidate
+                                    </span>
+                                </b-form-group>
+                                <!--b-form-group
+                                    label="Node URL"
+                                label-for="nodeurl"
+                                description="What is your node url?">
+                                <b-form-input
+                                    :class="getValidationClass('nodeUrl')"
+                                    v-model="nodeUrl"
+                                    name="coinbase"
+                                    type="text"/>
                                 <span
-                                    v-if="$v.applyValue.$dirty && !$v.applyValue.required"
+                                    v-if="$v.nodeUrl.$dirty && !$v.nodeUrl.required"
                                     class="text-danger">Required field</span>
                                 <span
-                                    v-else-if="$v.applyValue.$dirty && !$v.applyValue.minValue"
-                                    class="text-danger">Must be greater than 10,000,000 XDC</span>
-                            </b-input-group>
-                        </b-form-group>
-                        <b-form-group
-                            label="Coinbase Address"
-                            label-for="coinbase"
-                            description="What is your node coinbase address?">
-                            <b-form-input
-                                :class="getValidationClass('coinbase')"
-                                v-model="coinbase"
-                                name="coinbase"
-                                autocomplete="off"
-                                type="text"/>
-                            <span
-                                v-if="$v.coinbase.$dirty && !$v.coinbase.required"
-                                class="text-danger">Required field</span>
-                            <span
-                                v-else-if="$v.coinbase.$dirty && !$v.coinbase.coinbaseAddress"
-                                class="text-danger">Wrong coinbase address format</span>
-                            <span
-                                v-else-if="coinbaseError"
-                                class="text-danger">
-                                The masternode candidate account should be different from the depositing account.
-                            </span>
-                            <span
-                                v-else-if="candidateError"
-                                class="text-danger">
-                                This coinbase address is already a candidate
-                            </span>
-                        </b-form-group>
-                        <!--b-form-group
-                            label="Node URL"
-                            label-for="nodeurl"
-                            description="What is your node url?">
-                            <b-form-input
-                                :class="getValidationClass('nodeUrl')"
-                                v-model="nodeUrl"
-                                name="coinbase"
-                                type="text"/>
-                            <span
-                                v-if="$v.nodeUrl.$dirty && !$v.nodeUrl.required"
-                                class="text-danger">Required field</span>
-                            <span
-                                v-else-if="$v.nodeUrl.$dirty && !$v.nodeUrl.nodeUrl"
-                                class="text-danger">Wrong node URL format</span>
-                        </b-form-group-->
-                        <div class="buttons text-right">
-                            <b-button
-                                type="button"
-                                variant="secondary"
-                                @click="$router.go(-1)">Cancel</b-button>
-                            <b-button
-                                type="submit"
-                                variant="primary">Apply</b-button>
-                        </div>
-                    </b-form>
-                </template>
-            </b-card>
-        </b-row>
-        <b-modal
-            ref="applyModal"
-            class="XDC-modal"
-            centered
-            title="Scan this QR code by xdcwallet"
-            hide-footer>
-            <div
-                v-if="provider === 'xdcwallet'"
-                style="text-align: center">
-                <vue-qrcode
-                    :value="qrCode"
-                    :options="{size: 200 }"
-                    class="img-fluid text-center text-lg-right"/>
-            </div>
-            <b-btn
-                class="mt-3"
-                variant="outline-danger"
-                block
-                @click="hideModal">Close</b-btn>
-        </b-modal>
+                                    v-else-if="$v.nodeUrl.$dirty && !$v.nodeUrl.nodeUrl"
+                                    class="text-danger">Wrong node URL format</span>
+                            </b-form-group-->
+                                <div class="buttons text-right">
+                                    <b-button
+                                        type="button"
+                                        variant="secondary"
+                                        @click="$router.go(-1)">Cancel</b-button>
+                                    <b-button
+                                        type="submit"
+                                        variant="primary">Apply</b-button>
+                                </div>
+                            </b-form>
+                        </template>
+                    </b-card>
+                </div>
+                <div
+                    v-if="!KYC.status"
+                    class="col-12 col-md-6 col-lg-6">
+                    <b-card
+                        :class="'XDC-card XDC-card--lighter'
+                        + (loading ? ' XDC-loading' : '')">
+                        <h4 class="h4 color-black XDC-card__title"><strong>Upload KYC Document</strong></h4>
+                        <template>
+                            <b-form
+                                class="XDC-form XDC-form--apply"
+                                novalidate
+                                enctype="multipart/form-data"
+                                @submit.prevent="uploadKYC()">
+                                <!--<vue-dropzone
+                                    id="dropzone"
+                                    ref="myVueDropzone"
+                                    :options="dropzoneOptions"/>-->
+                                <b-form-file
+                                    v-model="KYC.file"
+                                    :state="Boolean(KYC.file)"
+                                    class="z-index-0 XDC-upload"
+                                    accept="application/pdf"
+                                    placeholder="Choose a file..."
+                                    required
+                                />
+                                <span
+                                    v-if="KYC && !KYC.file"
+                                    class="text-danger">Required field (only *.pdf allowed)</span>
+                                <div class="buttons text-right">
+                                    <b-button
+                                        type="submit"
+                                        variant="primary">Upload KYC</b-button>
+                                </div>
+                            </b-form>
+                        </template>
+                    </b-card>
+                </div>
+            </b-row>
+            <b-modal
+                ref="applyModal"
+                class="XDC-modal"
+                centered
+                title="Scan this QR code by xdcwallet"
+                hide-footer>
+                <div
+                    v-if="provider === 'xdcwallet'"
+                    style="text-align: center">
+                    <vue-qrcode
+                        :value="qrCode"
+                        :options="{size: 200 }"
+                        class="img-fluid text-center text-lg-right"/>
+                </div>
+                <b-btn
+                    class="mt-3"
+                    variant="outline-danger"
+                    block
+                    @click="hideModal">Close</b-btn>
+            </b-modal>
+        </div>
     </div>
 </template>
 <script>
@@ -206,12 +219,14 @@ import BigNumber from 'bignumber.js'
 import store from 'store'
 import VueQrcode from '@chenfengyuan/vue-qrcode'
 import axios from 'axios'
+import vue2Dropzone from 'vue2-dropzone'
 
 export default {
     name: 'App',
     components: {
         NumberInput,
-        VueQrcode
+        VueQrcode,
+        vueDropzone: vue2Dropzone
     },
     mixins: [validationMixin],
     data () {
@@ -230,9 +245,17 @@ export default {
             candidateError: false,
             balance: 0,
             txFee: 0,
+            gasPrice: null,
+            transactionHash: '',
+            toastMessage: 'You have successfully applied!',
+            toastMessageError: 'An error occurred while applying, please try again',
             KYC: {
                 file: '',
                 status: false
+            },
+            dropzoneOptions: {
+                url: 'https://httpbin.org/post',
+                acceptedFiles: 'application/pdf'
             }
         }
     },
@@ -261,23 +284,22 @@ export default {
         }
     },
     created: async function () {
-        let self = this
-        let account
-        self.config = await self.appConfig()
+        const self = this
+        self.config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = self.config.blockchain || {}
         try {
             self.isReady = !!self.web3
+            self.gasPrice = await self.web3.eth.getGasPrice()
+            self.txFee = new BigNumber(this.chainConfig.gas * self.gasPrice).div(10 ** 18).toString(10)
             if (!self.web3 && self.NetworkProvider === 'metamask') {
                 throw Error('Web3 is not properly detected. Have you installed MetaMask extension?')
             }
-            if (store.get('address')) {
-                account = store.get('address').toLowerCase()
-            } else {
-                account = this.$store.state.walletLoggedIn
-                    ? this.$store.state.walletLoggedIn : await self.getAccount()
+            self.account = store.get('address') ||
+                self.$store.state.address || await self.getAccount()
+            if (self.account.substring(0, 2) === '0x') {
+                self.account = 'xdc' + self.account.substring(2)
             }
-            self.account = account
-            await self.getKYCStatus(account)
+            await self.getKYCStatus(self.account)
         } catch (e) {
             self.$toasted.show(`You need login your account before voting`,
                 {
@@ -362,19 +384,26 @@ export default {
 
                 self.loading = true
 
-                let contract = await self.getXDCValidatorInstance()
+                let contract// = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
+                const account = (await self.getAccount() || '').toLowerCase()
                 let txParams = {
-                    from : self.account,
+                    from : account,
                     value: self.web3.utils.toHex(new BigNumber(value).multipliedBy(10 ** 18).toString(10)),
-                    gasPrice: self.web3.utils.toHex(self.chainConfig.gasPrice),
-                    gas: self.web3.utils.toHex(self.chainConfig.gas)
+                    gasPrice: self.web3.utils.toHex(self.gasPrice),
+                    gas: self.web3.utils.toHex(self.chainConfig.gas),
+                    gasLimit: self.web3.utils.toHex(self.chainConfig.gas),
+                    chainId: self.chainConfig.networkId
                 }
-                let rs
-                if (self.NetworkProvider === 'ledger') {
-                    let nonce = await self.web3.eth.getTransactionCount(self.account)
-                    // make a call to /api/ipfs/addKYC with owner,file.
-                    // let hash = await axios.post('/api/ipfs/addKYC',{})
-                    let dataTx = contract.propose.request(coinbase).params[0]
+                if (self.NetworkProvider === 'ledger' ||
+                    self.NetworkProvider === 'trezor') {
+                    let nonce = await self.web3.eth.getTransactionCount(account)
+                    // let dataTx = contract.propose.request(coinbase).params[0]
+                    const data = await contract.methods.propose(coinbase).encodeABI()
+                    const dataTx = {
+                        data,
+                        to: self.chainConfig.validatorAddress
+                    }
                     Object.assign(
                         dataTx,
                         dataTx,
@@ -384,23 +413,52 @@ export default {
                         }
                     )
                     let signature = await self.signTransaction(dataTx)
-                    rs = await self.sendSignedTransaction(dataTx, signature)
-                } else {
-                    rs = await contract.propose(coinbase, txParams)
-                }
-                let toastMessage = rs.tx ? 'You have successfully applied!'
-                    : 'An error occurred while applying, please try again'
-                self.$toasted.show(toastMessage)
-
-                if (coinbase.substring(0, 2) === '0x') {
-                    coinbase = 'xdc' + coinbase.substring(2)
-                }
-                setTimeout(() => {
-                    self.loading = false
-                    if (rs.tx) {
-                        self.$router.push({ path: `/candidate/${coinbase}` })
+                    const txHash = await self.sendSignedTransaction(dataTx, signature)
+                    if (txHash) {
+                        self.transactionHash = txHash
+                        let check = true
+                        while (check) {
+                            const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                            if (receipt) {
+                                check = false
+                                self.$toasted.show(self.toastMessage)
+                                if (coinbase.substring(0, 2) === '0x') {
+                                    coinbase = 'xdc' + coinbase.substring(2)
+                                }
+                                setTimeout(() => {
+                                    self.loading = false
+                                    if (self.transactionHash) {
+                                        self.$router.push({ path: `/candidate/${coinbase}` })
+                                    }
+                                }, 2000)
+                            }
+                        }
                     }
-                }, 2000)
+                } else {
+                    // rs = await contract.propose(coinbase, txParams)
+                    contract.methods.propose(coinbase).send(txParams)
+                        .on('transactionHash', async (txHash) => {
+                            self.transactionHash = txHash
+                            let check = true
+                            while (check) {
+                                const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                                if (receipt) {
+                                    check = false
+                                    self.$toasted.show(self.toastMessage)
+                                    setTimeout(() => {
+                                        self.loading = false
+                                        if (self.transactionHash) {
+                                            self.$router.push({ path: `/candidate/${coinbase}` })
+                                        }
+                                    }, 2000)
+                                }
+                            }
+                        }).catch(e => {
+                            console.log(e)
+                            self.loading = false
+                            self.$toasted.show(self.toastMessageError + e, { type: 'error' })
+                        })
+                }
             } catch (e) {
                 self.loading = false
                 self.$toasted.show(`An error occurred while applying, please fix it and try again: ${String(e)}`, {
@@ -481,18 +539,24 @@ export default {
             }
         },
         async getKYCStatus (account) {
-            let contract = await this.getXDCValidatorInstance()
+            // let contract = await this.getXDCValidatorInstance()
+            let contract = this.XDCValidator
             if (contract) {
-                const isHashFound = await contract.getHashCount.call(account)
+                console.log('getKYC')
+                const isHashFound = await contract.methods.getHashCount(account).call()
                 if (new BigNumber(isHashFound).toNumber()) {
-                    const getKYC = await contract.getLatestKYC.call(account)
+                    const getKYC = await contract.methods.getLatestKYC(account).call()
                     // const KYCString = await contract.KYCString.call(account)
+                    console.log(getKYC, 'getKYC')
                     this.KYC.status = getKYC
                 }
+            } else {
+                console.log('1111')
             }
         },
         async uploadKYC () {
             try {
+                let self = this
                 if (this.KYC && !!this.KYC.file) {
                     if (this.KYC.file.type !== 'application/pdf') {
                         this.KYC.file = null
@@ -503,7 +567,8 @@ export default {
                     const formData = new FormData()
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
                     const { data } = await axios.post('/api/ipfs/addKYC', formData)
-                    const contract = await this.getXDCValidatorInstance()
+                    let contract// = await self.getXDCValidatorInstance()
+                    contract = self.XDCValidator
                     const gasPrice = await this.web3.eth.getGasPrice() * 1.40
                     let txParams = {
                         from : this.account,
@@ -513,8 +578,8 @@ export default {
                     console.log(`>>>>>>>>>>>>TxParams ${txParams}`)
                     console.log(`>>>>>>>>>>>>HASH${data.hash}`)
                     console.log(`>>>>>>>>>>>>Before`)
-                    console.log(`>>>>>>>>>>>>${contract.getCandidates()}`)
-                    await contract.uploadKYC(data.hash, txParams)
+                    // console.log(`>>>>>>>>>>>>${contract.mgetCandidates()}`)
+                    await contract.methods.uploadKYC(data.hash).send(txParams)
                     // await contract.propose(coinbase, txParams)
                     // console.log(`>>>>>>>${rs}`)
                     // await contract.getCandidates()

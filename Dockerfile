@@ -1,6 +1,6 @@
 FROM node:8-alpine
 
-LABEL maintainer="admin@xinfin.org"
+LABEL maintainer="admin@xinfin.network"
 
 WORKDIR /app
 

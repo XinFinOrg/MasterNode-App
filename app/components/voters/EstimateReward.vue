@@ -31,7 +31,7 @@ export default {
         }
     },
     async created () {
-        // await this.calculateRewards()
+        await this.calculateRewards()
     },
     methods: {
         async calculateRewards () {

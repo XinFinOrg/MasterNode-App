@@ -2,13 +2,17 @@
 const express = require('express')
 const config = require('config')
 const router = express.Router()
-const web3 = require('../models/blockchain/web3rpc')
+const web3 = require('../models/blockchain/web3rpc').Web3Rpc()
 
 router.get('/', async function (req, res, next) {
     let appConfig = {}
-    appConfig.blockchain = config.get('blockchain')
+    appConfig.blockchain = JSON.parse(JSON.stringify(config.get('blockchain')))
+
+    delete appConfig.blockchain.internalRpc
+    delete appConfig.blockchain.internalWs
     try {
         appConfig.blockchain.blockNumber = await web3.eth.getBlockNumber()
+        appConfig.blockchain.XDCStakeAmount = await web3.eth.getBalance(appConfig.blockchain.validatorAddress)
     } catch (e) {
         appConfig.blockchain.blockNumber = 0
     }

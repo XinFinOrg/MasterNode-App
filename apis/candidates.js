@@ -3,9 +3,9 @@ const express = require('express')
 const axios = require('axios')
 const router = express.Router()
 const db = require('../models/mongodb')
-const web3 = require('../models/blockchain/web3rpc')
+const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const validator = require('../models/blockchain/validatorRpc')
-const HDWalletProvider = require('truffle-hdwallet-provider')
+const HDWalletProvider = require('@truffle/hdwallet-provider')
 const PrivateKeyProvider = require('truffle-privatekey-provider')
 const config = require('config')
 const _ = require('lodash')
@@ -19,7 +19,8 @@ const gas = config.get('blockchain.gas')
 router.get('/', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -78,7 +79,8 @@ router.get('/', [
 router.get('/masternodes', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -141,7 +143,8 @@ router.get('/masternodes', [
 router.get('/slashedMNs', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -186,7 +189,8 @@ router.get('/slashedMNs', [
 router.get('/proposedMNs', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     try {
         const errors = validationResult(req)
@@ -231,7 +235,8 @@ router.get('/proposedMNs', [
 router.get('/resignedMNs', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -311,8 +316,48 @@ router.get('/crawlStatus', async function (req, res, next) {
         let blockNumber = await web3.eth.getBlockNumber()
 
         return res.json(
-            (parseInt(latestSignedBlock) > parseInt(blockNumber) - 20)
+            (parseInt(latestSignedBlock) > parseInt(blockNumber) - 100)
         )
+    } catch (e) {
+        return next(e)
+    }
+})
+
+router.get('/search', [
+    query('query').isAscii().withMessage('query must be ascii symbols'),
+    query('limit').isInt({ min: 0, max: 50 }).withMessage('limit must be number and less than 200 items per page'),
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
+], async function (req, res, next) {
+    let errors = validationResult(req)
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+    }
+    try {
+        const regexpAddr = /^(xdc)?[0-9a-fA-F]{40}$/
+        const query = req.query.query || ''
+        let limit = (req.query.limit) ? parseInt(req.query.limit) : 200
+        let skip
+        skip = (req.query.page) ? limit * (req.query.page - 1) : 0
+        if (regexpAddr.test(query)) {
+            const data = await db.Candidate.find({
+                candidate: query
+            }).limit(limit).skip(skip).lean().exec()
+            return res.json({
+                items: data
+            })
+        } else {
+            const total = db.Candidate.count({
+                name: { $regex: query, $options: 'i' }
+            })
+            const data = await db.Candidate.find({
+                name: { $regex: query, $options: 'i' }
+            }).limit(limit).skip(skip).lean().exec()
+            return res.json({
+                total: await total,
+                items: data
+            })
+        }
     } catch (e) {
         return next(e)
     }
@@ -326,7 +371,7 @@ router.get('/:candidate', async function (req, res, next) {
     }).lean().exec() || {})
 
     let latestSigners = await db.Signer.findOne({}).sort({ _id: 'desc' })
-    let latestPenalties = await db.Penalty.find({}).sort({ epoch: 'desc' }).lean().exec()
+    let latestPenalties = await db.Penalty.findOne({}).sort({ epoch: 'desc' }).lean().exec()
     // Get slashed times in a week
     const epochsPerWeek = 336
     const promise = db.Status.find({
@@ -334,10 +379,7 @@ router.get('/:candidate', async function (req, res, next) {
     }).sort({ epoch: -1 }).limit(epochsPerWeek).lean().exec() || 0
 
     let signers = (latestSigners || {}).signers || []
-    let penalties = []
-    latestPenalties.forEach(p => {
-        penalties = _.concat(penalties, (p || {}).penalties || [])
-    })
+    let penalties = (latestPenalties || {}).penalties || []
 
     const setS = new Set()
     for (let i = 0; i < signers.length; i++) {
@@ -369,7 +411,8 @@ router.get('/:candidate', async function (req, res, next) {
 router.get('/:candidate/voters', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -383,7 +426,8 @@ router.get('/:candidate/voters', [
 
     let total = db.Voter.countDocuments({
         smartContractAddress: config.get('blockchain.validatorAddress'),
-        candidate: (req.params.candidate || '').toLowerCase()
+        candidate: (req.params.candidate || '').toLowerCase(),
+        capacityNumber: { $ne: 0 }
     })
 
     const sort = {}
@@ -395,7 +439,8 @@ router.get('/:candidate/voters', [
 
     let voters = await db.Voter.find({
         smartContractAddress: config.get('blockchain.validatorAddress'),
-        candidate: (req.params.candidate || '').toLowerCase()
+        candidate: (req.params.candidate || '').toLowerCase(),
+        capacityNumber: { $ne: 0 }
     }).sort(sort).limit(limit).skip(skip)
     return res.json({
         items: await voters,
@@ -419,7 +464,7 @@ router.get('/:candidate/rewards', async function (req, res, next) {
 // for automation test only
 router.post('/apply', async function (req, res, next) {
     let key = req.query.key
-    let network = config.get('blockchain.rpc')
+    let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
         let walletProvider =
@@ -433,7 +478,8 @@ router.post('/apply', async function (req, res, next) {
         if (isCandidate) {
             await db.Candidate.updateOne({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
-                candidate: candidate
+                candidate: candidate,
+                owner: walletProvider.address
             }, {
                 $set: {
                     name: req.query.name
@@ -450,7 +496,8 @@ router.post('/apply', async function (req, res, next) {
         if (req.query.name) {
             await db.Candidate.updateOne({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
-                candidate: candidate
+                candidate: candidate,
+                owner: walletProvider.address
             }, {
                 $set: {
                     smartContractAddress: config.get('blockchain.validatorAddress'),
@@ -472,7 +519,7 @@ router.post('/apply', async function (req, res, next) {
 // for automation test only
 router.post('/applyBulk', async function (req, res, next) {
     let key = req.query.key
-    let network = config.get('blockchain.rpc')
+    let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
         let walletProvider =
@@ -522,7 +569,7 @@ router.post('/applyBulk', async function (req, res, next) {
 // for automation test only
 router.post('/resign', async function (req, res, next) {
     let key = req.query.key
-    let network = config.get('blockchain.rpc')
+    let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
         let walletProvider =
@@ -547,7 +594,7 @@ router.post('/resign', async function (req, res, next) {
 // for automation test only
 router.post('/vote', async function (req, res, next) {
     let key = req.query.key
-    let network = config.get('blockchain.rpc')
+    let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
         let walletProvider =
@@ -571,7 +618,7 @@ router.post('/vote', async function (req, res, next) {
 // for automation test only
 router.post('/unvote', async function (req, res, next) {
     let key = req.query.key
-    let network = config.get('blockchain.rpc')
+    let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
         let walletProvider =
@@ -620,7 +667,8 @@ router.get('/:candidate/isCandidate', async function (req, res, next) {
 router.get('/:candidate/:owner/getRewards', [
     query('limit')
         .isInt({ min: 0, max: 100 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number')
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500')
 ], async function (req, res, next) {
     try {
         const errors = validationResult(req)
@@ -641,17 +689,17 @@ router.get('/:candidate/:owner/getRewards', [
         skip = (page) ? limit * (page - 1) : 0
         let masternodesRW = []
 
-        const total = db.Status.countDocuments({
+        const total = db.Status.estimatedDocumentCount({
             candidate: candidate,
             epoch: {
-                $lt: currentEpoch - 2
+                $lte: currentEpoch - 2
             }
         })
 
         const epochData = await db.Status.find({
             candidate: candidate,
             epoch: {
-                $lt: currentEpoch - 2
+                $lte: currentEpoch - 2
             }
         }).sort({ epoch: -1 }).limit(limit).skip(skip).lean().exec()
         let masternodesEpochs = []
@@ -664,7 +712,7 @@ router.get('/:candidate/:owner/getRewards', [
 
         let masternodes = epochData.filter(e => e.status === 'MASTERNODE')
         const rewards = await axios.post(
-            urljoin(config.get('xdcscanUrl'), 'api/expose/MNRewardsByEpochs'),
+            urljoin(config.get('XDCscanUrl'), 'api/expose/MNRewardsByEpochs'),
             {
                 address: candidate,
                 owner: owner,
@@ -744,7 +792,11 @@ router.put('/update', [
         set['socials.website'] = body.website || ''
         set['socials.telegram'] = body.telegram || ''
 
-        const address = await web3.eth.accounts.recover(message, signedMessage)
+        let address = await web3.eth.accounts.recover(message, signedMessage)
+        if (address.substring(0, 2) === '0x') {
+            address = 'xdc' + address.substring(2)
+        }
+        console.log('address', address)
 
         if (
             address.toLowerCase() === c.candidate.toLowerCase() ||
@@ -808,7 +860,7 @@ router.post('/:candidate/generateMessage', [
             return res.status(406).send('This address is not a candidate')
         }
 
-        const message = '[MasterNode-App ' + (new Date().toLocaleString().replace(/['"]+/g, '')) + ']' +
+        const message = '[XDCmaster ' + (new Date().toLocaleString().replace(/['"]+/g, '')) + ']' +
             ' I am the owner of candidate ' + '[' + candidate + ']'
         const id = uuidv4()
 
@@ -830,7 +882,8 @@ router.post('/:candidate/generateMessage', [
 })
 
 router.post('/verifyScannedQR', [
-    query('id').exists().withMessage('id is required'),
+    query('id').isLength({ min: 1 }).exists().withMessage('id is required')
+        .contains('-').withMessage('wrong id format'),
     check('message').isLength({ min: 1 }).exists().withMessage('message is required'),
     check('signature').isLength({ min: 1 }).exists().withMessage('signature is required'),
     check('signer').isLength({ min: 1 }).exists().withMessage('signer is required'),
@@ -843,7 +896,7 @@ router.post('/verifyScannedQR', [
     try {
         const message = req.body.message
         const signature = req.body.signature
-        const id = req.query.id
+        const id = escape(req.query.id)
         let signer = req.body.signer.toLowerCase()
 
         const checkId = await db.Signature.findOne({ signedId: id })
@@ -879,14 +932,15 @@ router.post('/verifyScannedQR', [
 })
 
 router.get('/:candidate/getSignature', [
-    query('id').exists().withMessage('id is required')
+    query('id').isLength({ min: 1 }).exists().withMessage('id is required')
+        .contains('-').withMessage('wrong id format')
 ], async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
         return next(errors.array())
     }
     try {
-        const messId = req.query.id || ''
+        const messId = escape(req.query.id)
 
         const signature = await db.Signature.findOne({ signedId: messId })
 
@@ -961,7 +1015,8 @@ router.get('/slashed/:epoch', [
 router.get('/:candidate/slashedFilter', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
-    query('page').isNumeric({ no_symbols: true }).optional().withMessage('page must be number'),
+    query('page').isNumeric({ no_symbols: true })
+        .optional().isInt({ min: 0, max: 500 }).withMessage('page should greater than 0 and less than 500'),
     check('filterBy').isLength({ min: 1 }).exists().withMessage('filterBy is required')
 ], async function (req, res, next) {
     const errors = validationResult(req)

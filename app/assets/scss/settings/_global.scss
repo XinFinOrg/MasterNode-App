@@ -12,20 +12,22 @@ $grid-breakpoints: (
 
 /* Fonts
    ========================================================================== */
-$global-font: 'SFProText', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif !default;
+//$global-font: 'SFProText', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif !default;
+$global-font: 'Fira Sans', sans-serif !default;
 $global-font-size: 16px;
 
 /* Colors
    ========================================================================== */
-$color-body-bg: #eff3f6;
+$color-body-bg: #f3f3f3;
+$color-body-dark-bg: #080e1e;
 $color-primary: #373658;
 $color-input-bg: #f8f9fa;
 $color-input-focus-bg: #ced4da;
-$color-btn-bg: #678be0;
+$color-btn-bg: #247DFE;
 $color-btn-hover-bg: #739DFF;
 
-$color-text: #a199a9;
-$color-text-2: #2b2f36;
+$color-text: #808080;
+$color-text-2: #303030;
 $color-text-muted: #8b8492;
 $color-text-highlight: #3169a5;
 $color-link: #678be0;
@@ -38,3 +40,10 @@ $color-purple: #c584f9;
 $color-orange: #e68a86;
 $color-success: #30ddd8;
 $color-error: #dc3545;
+
+$tab-color: #E9E7E7;
+
+$white: #ffffff;
+$black: #000000;
+
+$card-shadow: 0 0 20px 10px rgba(0,0,0,.01);

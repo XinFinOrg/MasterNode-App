@@ -69,9 +69,9 @@
   "sourceMap": "26:520:1:-;;;192:56;8:9:-1;5:2;;;30:1;27;20:12;5:2;192:56:1;231:10;223:5;;:18;;;;;;;;;;;;;;;;;;26:520;;;;;;",
   "deployedSourceMap": "26:520:1:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;369:175;;8:9:-1;5:2;;;30:1;27;20:12;5:2;369:175:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;78:36;;8:9:-1;5:2;;;30:1;27;20:12;5:2;78:36:1;;;;;;;;;;;;;;;;;;;;;;;52:20;;8:9:-1;5:2;;;30:1;27;20:12;5:2;52:20:1;;;;;;;;;;;;;;;;;;;;;;;;;;;254:109;;8:9:-1;5:2;;;30:1;27;20:12;5:2;254:109:1;;;;;;;;;;;;;;;;;;;;;;;;;;369:175;435:19;171:5;;;;;;;;;;;157:19;;:10;:19;;;153:26;;;468:11;435:45;;490:8;:21;;;512:24;;490:47;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;490:47:1;;;;8:9:-1;5:2;;;45:16;42:1;39;24:38;77:16;74:1;67:27;5:2;490:47:1;;;;153:26;369:175;;:::o;78:36::-;;;;:::o;52:20::-;;;;;;;;;;;;;:::o;254:109::-;171:5;;;;;;;;;;;157:19;;:10;:19;;;153:26;;;347:9;320:24;:36;;;;153:26;254:109;:::o",
   "source": "pragma solidity ^0.4.19;\n\ncontract Migrations {\n    address public owner;\n    uint public last_completed_migration;\n\n    modifier restricted() {\n        if (msg.sender == owner) _;\n    }\n\n    constructor() public {\n        owner = msg.sender;\n    }\n\n    function setCompleted(uint completed) public restricted {\n        last_completed_migration = completed;\n    }\n\n    function upgrade(address new_address) public restricted {\n        Migrations upgraded = Migrations(new_address);\n        upgraded.setCompleted(last_completed_migration);\n    }\n}\n",
-  "sourcePath": "/home/vagrant/projects/masternode-app/contracts/Migrations.sol",
+  "sourcePath": "/home/vagrant/projects/masternodeapp/contracts/Migrations.sol",
   "ast": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/Migrations.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/Migrations.sol",
     "exportedSymbols": {
       "Migrations": [
         126
@@ -721,7 +721,7 @@
     "src": "0:547:1"
   },
   "legacyAST": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/Migrations.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/Migrations.sol",
     "exportedSymbols": {
       "Migrations": [
         126

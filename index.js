@@ -11,10 +11,15 @@ const cors = require('cors')
 const swaggerUi = require('swagger-ui-express')
 const morgan = require('morgan')
 const logger = require('./helpers/logger')
+const helmet = require('helmet')
 const flash = require('connect-flash')
 const fileUpload = require('express-fileupload')
 // body parse
 const app = express()
+
+// helmet
+app.use(helmet())
+app.use(helmet.hidePoweredBy())
 
 // cors
 app.use(cors({
@@ -33,17 +38,27 @@ app.use(validator({}))
 app.use('/build', express.static('build'))
 app.use('/app/assets', express.static('app/assets'))
 const docs = yaml.safeLoad(fs.readFileSync('./docs/swagger.yml', 'utf8'))
-app.use('/apiDocs', swaggerUi.serve, swaggerUi.setup(docs))
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(docs))
 
 // apis
 app.use(require('./apis'))
+app.use(require('./middlewares/sitemap'))
 
 // error handler
 app.use(require('./middlewares/error'))
 
 app.get('*', function (req, res) {
-    return res.sendFile(path.join(__dirname, 'index.html'))
+    let p
+    if (process.env.NODE_ENV === 'development') {
+        p = path.resolve(__dirname, 'index.html')
+    } else {
+        p = path.resolve(__dirname, './build', 'index.html')
+    }
+    return res.sendFile(p)
 })
+
+// error handler
+app.use(require('./middlewares/error'))
 
 // start server
 server.listen(config.get('server.port'), config.get('server.host'), function () {

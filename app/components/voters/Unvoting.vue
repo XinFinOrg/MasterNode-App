@@ -1,6 +1,6 @@
 <template>
     <div
-        v-if="loading"
+        v-if="loadingPage"
         class="XDC-loading" />
     <div v-else>
         <div class="container">
@@ -53,7 +53,7 @@
                                     </p>
                                 </li>
                                 <li class="XDC-list__item">
-                                    <i class="tm-XDC XDC-list__icon" />
+                                    <i class="tm-XDC2 XDC-list__icon" />
                                     <p class="XDC-list__text">
                                         <span> {{ formatCurrencySymbol(formatNumber(voted)) }}
                                             - <a
@@ -81,7 +81,7 @@
                                             name="vote-value"
                                             @input="onChange"/>
                                         <b-input-group-append>
-                                            <i class="tm-XDC" />
+                                            <i class="tm-XDC2" />
                                         </b-input-group-append>
                                         <span
                                             v-if="$v.unvoteValue.$dirty && !$v.unvoteValue.required"
@@ -163,7 +163,7 @@
                                     </div>
                                     <div>
                                         <div
-                                            v-if="provider === 'xdcwallet'"
+                                            v-if="provider === 'XDCwallet'"
                                             style="text-align: center; margin-top: 10px">
                                             <vue-qrcode
                                                 :value="qrCode"
@@ -180,7 +180,7 @@
                                         variant="secondary"
                                         @click="backStep">Back</b-button>
                                     <button
-                                        v-if="provider !== 'xdcwallet'"
+                                        v-if="provider !== 'XDCwallet'"
                                         class="btn btn-primary"
                                         variant="primary"
                                         @click="unvote">Submit</button>
@@ -220,6 +220,7 @@ export default {
             voted: 0,
             unvoteValue: '100',
             loading: false,
+            loadingPage: false,
             step: 1,
             interval: null,
             processing: true,
@@ -234,7 +235,10 @@ export default {
             txFee: 0,
             gasPrice: null,
             isOwner: false,
-            limitedUnvote: 0
+            limitedUnvote: 0,
+            transactionHash: '',
+            toastMessage: 'You have successfully unvoted!',
+            toastMessageError: 'An error occurred while unvoting, please try again'
         }
     },
     validations () {
@@ -256,32 +260,28 @@ export default {
     created: async function () {
         let self = this
         let candidate = self.candidate
-        let account
-        self.loading = true
-        self.config = await self.appConfig()
+        self.loadingPage = true
+        self.config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = self.config.blockchain || {}
         self.gasPrice = await self.web3.eth.getGasPrice()
         self.txFee = new BigNumber(this.chainConfig.gas * self.gasPrice).div(10 ** 18).toString(10)
 
         try {
             self.isReady = !!self.web3
-            if (store.get('address')) {
-                account = store.get('address').toLowerCase()
-            } else {
-                account = this.$store.state.walletLoggedIn
-                    ? this.$store.state.walletLoggedIn : await self.getAccount()
-            }
-            self.voter = account
+            self.voter = store.get('address') ||
+                self.$store.state.address || await self.getAccount()
 
             const isOwnerPromise = axios.get(`/api/candidates/${candidate}/${self.voter}/isOwner`)
 
-            let contract = await self.getXDCValidatorInstance()
-            let votedCap = await contract.getVoterCap(candidate, account)
+            let contract// = await self.getXDCValidatorInstance()
+            contract = self.XDCValidator
+            // let votedCap = await contract.getVoterCap(candidate, account)
+            let votedCap = await contract.methods.getVoterCap(candidate, self.voter).call()
 
-            self.voted = votedCap.div(10 ** 18).toString(10)
+            self.voted = new BigNumber(votedCap).div(10 ** 18).toString(10)
             const isOwner = (await isOwnerPromise).data || false
             self.isOwner = Boolean(isOwner)
-            self.loading = false
+            self.loadingPage = false
         } catch (e) {
             console.log(e)
         }
@@ -327,9 +327,9 @@ export default {
 
                 self.loading = true
                 let unvoteValue = new BigNumber(value).multipliedBy(1e+18).toString(10)
-                let account = await self.getAccount()
-                account = account.toLowerCase()
-                let contract = await self.getXDCValidatorInstance()
+                const account = (await self.getAccount() || '').toLowerCase()
+                let contract// = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
                 let txParams = {
                     from: account,
                     gasPrice: self.web3.utils.toHex(self.gasPrice),
@@ -337,7 +337,6 @@ export default {
                     gasLimit: self.web3.utils.toHex(self.chainConfig.gas),
                     chainId: self.chainConfig.networkId
                 }
-                let rs
                 if (self.NetworkProvider === 'ledger' ||
                     self.NetworkProvider === 'trezor') {
                     // check if network provider is hardware wallet
@@ -351,7 +350,12 @@ export default {
                     // sign transaction with function and parameter to get signature
                     // attach txParams and signature then sendSignedTransaction
                     let nonce = await self.web3.eth.getTransactionCount(account)
-                    let dataTx = contract.unvote.request(candidate, unvoteValue).params[0]
+                    // let dataTx = contract.unvote.request(candidate, unvoteValue).params[0]
+                    let data = await contract.methods.unvote(candidate, unvoteValue).encodeABI()
+                    const dataTx = {
+                        data,
+                        to: self.chainConfig.validatorAddress
+                    }
                     if (self.NetworkProvider === 'trezor') {
                         txParams.value = self.web3.utils.toHex(0)
                     }
@@ -364,22 +368,48 @@ export default {
                         }
                     )
                     let signature = await self.signTransaction(dataTx)
-                    rs = await self.sendSignedTransaction(dataTx, signature)
-                } else {
-                    rs = await contract.unvote(candidate, unvoteValue, txParams)
-                }
-                self.vote -= value
-
-                let toastMessage = rs.tx ? 'You have successfully unvoted!'
-                    : 'An error occurred while unvoting, please try again'
-                self.$toasted.show(toastMessage)
-
-                setTimeout(() => {
-                    self.loading = false
-                    if (rs.tx) {
-                        self.$router.push({ path: `/confirm/${rs.tx}` })
+                    const txHash = await self.sendSignedTransaction(dataTx, signature)
+                    if (txHash) {
+                        self.transactionHash = txHash
+                        let check = true
+                        while (check) {
+                            const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                            if (receipt) {
+                                check = false
+                                self.$toasted.show(self.toastMessage)
+                                setTimeout(() => {
+                                    self.loading = false
+                                    if (self.transactionHash) {
+                                        self.$router.push({ path: `/confirm/${self.transactionHash}` })
+                                    }
+                                }, 2000)
+                            }
+                        }
                     }
-                }, 2000)
+                } else {
+                    contract.methods.unvote(candidate, unvoteValue).send(txParams)
+                        .on('transactionHash', async (txHash) => {
+                            self.transactionHash = txHash
+                            let check = true
+                            while (check) {
+                                const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                                if (receipt) {
+                                    check = false
+                                    self.$toasted.show(self.toastMessage)
+                                    setTimeout(() => {
+                                        self.loading = false
+                                        if (self.transactionHash) {
+                                            self.$router.push({ path: `/confirm/${self.transactionHash}` })
+                                        }
+                                    }, 2000)
+                                }
+                            }
+                        }).catch(e => {
+                            console.log(e)
+                            self.loading = false
+                            self.$toasted.show(self.toastMessageError + e, { type: 'error' })
+                        })
+                }
             } catch (e) {
                 self.loading = false
                 self.$toasted.show('An error occurred while unvoting, please try again', {
@@ -404,12 +434,12 @@ export default {
             self.id = generatedMess.data.id
 
             self.qrCode = encodeURI(
-                'masternode-app:unvote?amount=' + amount + '&' + 'candidate=' + self.candidate +
+                'xdcchain:unvote?amount=' + amount + '&' + 'candidate=' + self.candidate +
                 '&name=' + generatedMess.data.candidateName +
                 '&submitURL=' + generatedMess.data.url
             )
             this.step++
-            if (self.step === 2 && self.provider === 'xdcwallet') {
+            if (self.step === 2 && self.provider === 'XDCwallet') {
                 self.interval = setInterval(async () => {
                     await this.verifyScannedQR()
                 }, 3000)

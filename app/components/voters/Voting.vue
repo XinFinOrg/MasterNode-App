@@ -12,7 +12,7 @@
                     <h4 class=" color-white XDC-card__title XDC-card__title--big">Vote</h4>
                     <ul class="XDC-list list-unstyled">
                         <li class="XDC-list__item">
-                            <i class="tm-XDC XDC-list__icon" />
+                            <i class="tm-XDC2 XDC-list__icon" />
                             <p class="XDC-list__text">
                                 <span><router-link :to="`/voter/${voter}`">{{ voter }}</router-link></span>
                                 <span>Voter</span>
@@ -26,7 +26,7 @@
                             </p>
                         </li>
                         <li class="XDC-list__item">
-                            <i class="tm-XDC XDC-list__icon" />
+                            <i class="tm-XDC2 XDC-list__icon" />
                             <p class="XDC-list__text">
                                 <span> {{ formatCurrencySymbol(formatNumber(balance)) }}</span>
                                 <span>Balance</span>
@@ -51,7 +51,7 @@
                                     v-model="voteValue"
                                     name="vote-value"/>
                                 <b-input-group-append>
-                                    <i class="tm-XDC" />
+                                    <i class="tm-XDC2" />
                                 </b-input-group-append>
                                 <span
                                     v-if="$v.voteValue.$dirty && !$v.voteValue.required"
@@ -131,7 +131,7 @@
                             </div>
                             <div>
                                 <div
-                                    v-if="provider === 'xdcwallet'"
+                                    v-if="provider === 'XDCwallet'"
                                     style="text-align: center; margin-top: 10px">
                                     <vue-qrcode
                                         :value="qrCode"
@@ -148,7 +148,7 @@
                                 variant="secondary"
                                 @click="backStep">Back</b-button>
                             <button
-                                v-if="provider !== 'xdcwallet'"
+                                v-if="provider !== 'XDCwallet'"
                                 class="btn btn-primary"
                                 variant="primary"
                                 @click="vote">Submit</button>
@@ -186,7 +186,7 @@ export default {
             isReady: !!this.web3,
             voter: 'Unknown',
             candidate: this.$route.params.candidate,
-            voteValue: '25000',
+            voteValue: '100',
             loading: false,
             step: 1,
             message: '',
@@ -198,13 +198,16 @@ export default {
             provider: this.NetworkProvider || store.get('network') || null,
             votingError: false,
             txFee: 0,
-            gasPrice: null
+            gasPrice: null,
+            transactionHash: '',
+            toastMessageError: 'An error occurred while voting, please try again',
+            toastMessage: 'You have successfully voted!'
         }
     },
     validations: {
         voteValue: {
             required,
-            minValue: minValue(25000)
+            minValue: minValue(100)
         }
     },
     computed: {
@@ -216,8 +219,7 @@ export default {
     updated () {},
     created: async function () {
         let self = this
-        let account
-        self.config = await self.appConfig()
+        self.config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = self.config.blockchain || {}
         self.isReady = !!self.web3
         self.gasPrice = await self.web3.eth.getGasPrice()
@@ -226,15 +228,8 @@ export default {
             if (!self.isReady && self.NetworkProvider === 'metamask') {
                 throw Error('Web3 is not properly detected. Have you installed MetaMask extension?')
             }
-            if (store.get('address')) {
-                account = store.get('address').toLowerCase()
-            } else {
-                account = this.$store.state.walletLoggedIn
-                    ? this.$store.state.walletLoggedIn : await self.getAccount()
-            }
-            if (account) {
-                self.voter = account
-            }
+            self.voter = store.get('address') ||
+                self.$store.state.address || await self.getAccount()
             self.web3.eth.getBalance(self.voter, function (a, b) {
                 self.balance = new BigNumber(b).div(10 ** 18)
                 if (a) {
@@ -297,9 +292,9 @@ export default {
                     throw Error('Web3 is not properly detected.')
                 }
                 self.loading = true
-                let account = await self.getAccount()
-                account = account.toLowerCase()
-                let contract = await self.getXDCValidatorInstance()
+                const account = (await self.getAccount() || '').toLowerCase()
+                let contract// = await self.getXDCValidatorInstance()
+                contract = self.XDCValidator
                 let txParams = {
                     from: account,
                     value: self.web3.utils.toHex(new BigNumber(this.voteValue).multipliedBy(10 ** 18).toString(10)),
@@ -308,25 +303,77 @@ export default {
                     gasLimit: self.web3.utils.toHex(self.chainConfig.gas),
                     chainId: self.chainConfig.networkId
                 }
-                let rs
-                self.candidate = '0x' + self.candidate.substring(2)
-                console.log(self.candidate, 'self.candidate')
-                rs = await contract.vote(self.candidate, txParams)
-                console.log(rs, 'rs')
-                let toastMessage = rs.tx ? 'You have successfully voted!'
-                    : 'An error occurred while voting, please try again'
-                self.$toasted.show(toastMessage)
+                if (self.NetworkProvider === 'ledger' ||
+                    self.NetworkProvider === 'trezor') {
+                    // check if network provider is hardware wallet
+                    // sign transaction using hardwarewallet before sending to chain
 
-                setTimeout(() => {
-                    self.loading = false
-                    self.processing = false
-                    if (self.interval) {
-                        clearInterval(self.interval)
+                    // https://bit.ly/2KEXzQe
+                    // signing and sending processes
+                    //
+                    //
+                    // login device
+                    // sign transaction with function and parameter to get signature
+                    // attach txParams and signature then sendSignedTransaction
+                    let nonce = await self.web3.eth.getTransactionCount(account)
+                    // let dataTx = contract.vote.request(self.candidate).params[0]
+                    let data = await contract.methods.vote(self.candidate).encodeABI()
+                    const dataTx = {
+                        data,
+                        to: self.chainConfig.validatorAddress
                     }
-                    if (rs.tx) {
-                        self.$router.push({ path: `/confirm/${rs.tx}` })
+                    Object.assign(
+                        dataTx,
+                        dataTx,
+                        txParams,
+                        {
+                            nonce: self.web3.utils.toHex(nonce)
+                        }
+                    )
+                    let signature = await self.signTransaction(dataTx)
+                    const txHash = await self.sendSignedTransaction(dataTx, signature)
+                    if (txHash) {
+                        self.transactionHash = txHash
+                        let check = true
+                        while (check) {
+                            const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                            if (receipt) {
+                                check = false
+                                self.$toasted.show(self.toastMessage)
+                                setTimeout(() => {
+                                    self.loading = false
+                                    if (self.transactionHash) {
+                                        self.$router.push({ path: `/confirm/${self.transactionHash}` })
+                                    }
+                                }, 2000)
+                            }
+                        }
                     }
-                }, 2000)
+                } else {
+                    // rs = await contract.vote(self.candidate, txParams)
+                    contract.methods.vote(self.candidate).send(txParams)
+                        .on('transactionHash', async (txHash) => {
+                            self.transactionHash = txHash
+                            let check = true
+                            while (check) {
+                                const receipt = await self.web3.eth.getTransactionReceipt(txHash)
+                                if (receipt) {
+                                    check = false
+                                    self.$toasted.show(self.toastMessage)
+                                    setTimeout(() => {
+                                        self.loading = false
+                                        if (self.transactionHash) {
+                                            self.$router.push({ path: `/confirm/${self.transactionHash}` })
+                                        }
+                                    }, 2000)
+                                }
+                            }
+                        }).catch(e => {
+                            console.log(e)
+                            self.loading = false
+                            self.$toasted.show(self.toastMessageError + e, { type: 'error' })
+                        })
+                }
             } catch (e) {
                 self.loading = false
                 self.$toasted.show(`An error occurred while voting. ${String(e)}`, {
@@ -354,13 +401,13 @@ export default {
             self.id = generatedMess.data.id
 
             self.qrCode = encodeURI(
-                'masternode-app:vote?amount=' + amount + '&' + 'candidate=' + self.candidate +
+                'xdcchain:vote?amount=' + amount + '&' + 'candidate=' + self.candidate +
                 '&name=' + generatedMess.data.candidateName +
                 '&submitURL=' + generatedMess.data.url
             )
             self.step++
 
-            if (self.step === 2 && self.processing && self.provider === 'xdcwallet') {
+            if (self.step === 2 && self.processing && self.provider === 'XDCwallet') {
                 self.interval = setInterval(async () => {
                     await this.verifyScannedQR()
                 }, 3000)

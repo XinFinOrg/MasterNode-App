@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="main-content container">
         <b-row
             v-if="step === 1"
             align-v="center"
@@ -128,7 +128,7 @@
                         <div
                             style="margin-top: 20px">
                             <div
-                                v-if="provider === 'xdcwallet'"
+                                v-if="provider === 'XDCwallet'"
                                 style="text-align: center">
                                 <vue-qrcode
                                     :value="qrCode"
@@ -151,7 +151,7 @@
                             variant="secondary"
                             @click="backStep">Back</b-button>
                         <button
-                            v-if="provider !== 'xdcwallet'"
+                            v-if="provider !== 'XDCwallet'"
                             class="btn btn-primary"
                             variant="primary"
                             @click="update">Submit</button>
@@ -235,11 +235,10 @@ export default {
                 self.$router.push({ path: '/setting' })
                 throw Error('Web3 is not properly detected.')
             }
-            if (store.get('address')) {
-                self.account = store.get('address').toLowerCase()
-            } else {
-                self.account = this.$store.state.walletLoggedIn
-                    ? this.$store.state.walletLoggedIn : await self.getAccount()
+            self.account = store.get('address') ||
+                self.$store.state.address || await self.getAccount()
+            if (self.account.substring(0, 2) === '0x') {
+                self.account = 'xdc' + self.account.substring(2)
             }
             const { data } = await axios.get(`/api/candidates/${self.address}`)
             if (data) {
@@ -249,7 +248,7 @@ export default {
                         self.$router.push({ path: '/setting' })
                     }, 1000)
                 } else {
-                    self.name = data.name ? data.name : 'XinFin MasterNode'
+                    self.name = data.name ? data.name : 'XDC.Network'
                     self.hardware = data.hardware || 'N/A'
                     self.dcName = (data.dataCenter || {}).name || 'N/A'
                     self.dcLocation = (data.dataCenter || {}).location || 'N/A'
@@ -291,7 +290,8 @@ export default {
                     self.signHash = await self.web3.eth.sign(self.message, self.account)
                     break
                 case 'metamask':
-                    self.signHash = await self.web3.eth.personal.sign(self.message, self.account)
+                case 'xinpay':
+                    self.signHash = await self.web3.eth.personal.sign(self.message, self.account, '')
                     break
                 case 'trezor':
                 case 'ledger':
@@ -333,12 +333,12 @@ export default {
                 self.message = data.message
                 self.id = data.id
                 self.qrCode = encodeURI(
-                    'masternode-app:sign?message=' + self.message +
+                    'xdcchain:sign?message=' + self.message +
                     '&submitURL=' + data.url
                 )
             }
             self.step++
-            if (self.step === 2 && self.provider === 'xdcwallet') {
+            if (self.step === 2 && self.provider === 'XDCwallet') {
                 self.interval = setInterval(async () => {
                     await this.verifyScannedQR()
                 }, 3000)
@@ -390,7 +390,7 @@ export default {
                     self.loading = false
                     self.signHashError = ''
                     self.signHash = ''
-                    if (self.provider === 'xdcwallet') {
+                    if (self.provider === 'XDCwallet') {
                         self.signHashError = data.error.message
                         return false
                     } else {

@@ -1,98 +1,50 @@
 <template>
-    <div>
+    <div class="main-content">
         <div
-            class="container section section--status">
+            class="container">
             <div class="row">
                 <div class="col-12">
-                    <h3 class="section-title">
-                        <i class="tm-bolt color-pink" />
-                        <span>Network Status</span>
-                    </h3>
+                    <h4 class="h4 text-center mb-4">XDC Staking</h4>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-md-6 col-lg-4">
                     <b-card class="XDC-card">
-                        <h6 class="XDC-card__title">Current Block</h6>
+                        <h6 class="XDC-card__title">MasterNode / Total Nodes</h6>
                         <p class="XDC-card__text">
-                            #{{ chainConfig.blockNumber }}
+                            {{ activeCandidates }}/{{ (toXDCNumber(chainConfig.XDCStakeAmount/10000000)).toFixed(0) }}
                         </p>
-                        <img
-                            src="/app/assets/img/current_block-icon.png"
-                            class="XDC-card__img"
-                        >
                     </b-card>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-md-6 col-lg-4">
                     <b-card class="XDC-card XDC-card">
-                        <h6 class="XDC-card__title">Block Time</h6>
-                        <p class="XDC-card__text">{{ chainConfig.blockTime }}.00 s</p>
-                        <img
-                            src="/app/assets/img/block_time-icon.png"
-                            class="XDC-card__img1"
-                        >
-                    </b-card>
-                </div>
-                <div class="col-md-6 col-lg-3">
-                    <b-card class="XDC-card XDC-card">
-                        <h6 class="XDC-card__title">Epoch</h6>
+                        <h6 class="XDC-card__title">Staked Amount</h6>
                         <p class="XDC-card__text">
-                            #{{ Math.floor(chainConfig.blockNumber / chainConfig.epoch) + 1 }}</p>
-                        <img
-                            src="/app/assets/img/epoch-icon.png"
-                            class="XDC-card__img2"
-                        >
+                            {{ formatCurrencySymbol(formatBigNumber(toXDCNumber(chainConfig.XDCStakeAmount),2)) }}</p>
                     </b-card>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-md-6 col-lg-4">
                     <b-card class="XDC-card XDC-card">
-                        <h6 class="XDC-card__title">Next Checkpoint</h6>
+                        <h6 class="XDC-card__title">Epoch / Block Number</h6>
                         <p class="XDC-card__text">
-                            <!-- eslint-disable-next-line max-len -->
-                            #{{ parseInt(chainConfig.epoch) * (Math.floor(parseInt(chainConfig.blockNumber) / parseInt(chainConfig.epoch) + 1)) }}</p>
-                        <img
-                            src="/app/assets/img/next_checkpoint-icon.png"
-                            class="XDC-card__img3"
-                        >
+                            {{ Math.floor(chainConfig.blockNumber / chainConfig.epoch) + 1 }} / {{ chainConfig.blockNumber }}</p>
                     </b-card>
                 </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <h3 class="section-title--masternodes">
-                        <div class="masternode-bar">
-                            <i class="tm-flag color-yellow" />
-                            <span>Candidates</span>
-                            <span class="text-truncate section-title__description">
-                                <a
-                                    v-if="totalProposedNodes !== 0"
-                                    :class="currentTable === 'activeTotalCandidates' ? 'tab-active' : ''"
-                                    @click="changeTable('activeTotalCandidates')">Total MasterNodes ({{ activeTotalCandidates }})</a>
-                                <span v-if="resignedMN !== 0">|</span>
-                                <a
-                                    v-if="activeCandidates !== 0"
-                                    :class="currentTable === 'masternodes' ? 'tab-active' : ''"
-                                    @click="changeTable('masternodes')">Masternodes ({{ activeCandidates }})</a>
-                                <span v-if="slashedMN !== 0">|</span>
-                                <a
-                                    v-if="totalProposedNodes !== 0"
-                                    :class="currentTable === 'proposed' ? 'tab-active' : ''"
-                                    @click="changeTable('proposed')">Standby Nodes ({{ totalProposedNodes }})</a>
-                                <span v-if="resignedMN !== 0">|</span>
-                                <a
-                                    v-if="slashedMN !== 0"
-                                    :class="currentTable === 'slashed' ? 'tab-active' : ''"
-                                    @click="changeTable('slashed')">Slashed MNs ({{ slashedMN }})</a>
-                                <span v-if="totalProposedNodes !== 0">|</span>
-                                <a
-                                    v-if="resignedMN !== 0"
-                                    :class="currentTable === 'resigned' ? 'tab-active' : ''"
-                                    @click="changeTable('resigned')">Resigned Nodes ({{ resignedMN }})</a>
-                            </span>
-                        </div>
-                    </h3>
+                <!--<div
+                    class="col-md-6 col-lg-3">
+                    <b-card class="XDC-card XDC-card">
+                        <h6 class="XDC-card__title">Avg. Staking ROI</h6>
+                        <p class="XDC-card__text">
+                            {{ averageStakingROI ? averageStakingROI + '%' : '-&#45;&#45;' }}</p>
+                    </b-card>
                 </div>
+                <div
+                    class="col-md-6 col-lg-3">
+                    <b-card class="XDC-card XDC-card">
+                        <h6 class="XDC-card__title">Avg. Owner ROI</h6>
+                        <p class="XDC-card__text">
+                            &lt;!&ndash; eslint-disable-next-line max-len &ndash;&gt;
+                            {{ averageOwnerROI ? averageOwnerROI + '%' : '-&#45;&#45;' }}</p>
+                    </b-card>
+                </div>-->
             </div>
         </div>
 
@@ -102,85 +54,119 @@
         <div
             v-else
             class="container">
-            <b-table
-                :items="candidates"
-                :fields="fields"
-                :per-page="perPage"
-                :class="'XDC-table XDC-table--candidates ' + tableCssClass"
-                empty-text="There are no candidates to show"
-                stacked="lg"
-                @sort-changed="sortingChange" >
+            <b-card class="XDC-card xdc-p-none">
+                <div class="XDC-custom-tab p-4">
+                    <ul>
+                        <li
+                            v-if="activeCandidates !== 0"
+                            :class="currentTable === 'masternodes' ? 'active' : ''"
+                            @click="changeTable('masternodes')">Masternodes ({{ activeCandidates }})</li>
+                        <li
+                            v-if="slashedMN !== 0"
+                            :class="currentTable === 'slashed' ? 'active' : ''"
+                            @click="changeTable('slashed')">Slashed MNs ({{ slashedMN }})</li>
+                        <li
+                            v-if="totalProposedNodes !== 0"
+                            :class="currentTable === 'proposed' ? 'active' : ''"
+                            @click="changeTable('proposed')">Standby Nodes ({{ totalProposedNodes }})</li>
+                        <li
+                            v-if="resignedMN !== 0"
+                            :class="currentTable === 'resigned' ? 'active' : ''"
+                            @click="changeTable('resigned')">Resigned Nodes ({{ resignedMN }})</li>
+                    </ul>
+                </div>
 
-                <template
-                    slot="address"
-                    slot-scope="data">
-                    <router-link
-                        :to="'/candidate/' + data.item.address">
-                        {{ truncate(data.item.address, 18) }}
-                    </router-link>
-                </template>
+                <b-pagination
+                    v-if="mobileCheck && totalRows > 0 && totalRows > perPage"
+                    :total-rows="totalRows"
+                    :per-page="perPage"
+                    v-model="currentPage"
+                    align="center"
+                    class="XDC-pagination"
+                    @change="pageChange"/>
+                <b-table
+                    :items="candidates"
+                    :fields="fields"
+                    :per-page="perPage"
+                    :class="'XDC-table XDC-table--candidates ' + tableCssClass"
+                    empty-text="There are no candidates to show"
+                    stacked="lg"
+                    @sort-changed="sortingChange" >
 
-                <template
-                    slot="name"
-                    slot-scope="data">
-                    <div
-                        :id="`name_${data.index}`"
-                        class="text-truncate">
-                        {{ data.item.name }}
-                    </div>
-                    <b-tooltip
-                        v-if="data.item.name.length > 20"
-                        :target="`name_${data.index}`">
-                        {{ data.item.name }}
-                    </b-tooltip>
-                </template>
+                    <template
+                        slot="address"
+                        slot-scope="data">
+                        <router-link
+                            :to="'/candidate/' + data.item.address">
+                            {{ truncate(data.item.address, 18) }}
+                        </router-link>
+                    </template>
 
-                <template
-                    slot="capacity"
-                    slot-scope="data">{{ formatCurrencySymbol(formatBigNumber(data.item.cap, 2)) }}
-                </template>
+                    <template
+                        slot="name"
+                        slot-scope="data">
+                        <div
+                            :id="`name_${data.index}`"
+                            class="text-truncate">
+                            {{ data.item.name }}
+                        </div>
+                        <b-tooltip
+                            v-if="data.item.name.length > 20"
+                            :target="`name_${data.index}`">
+                            {{ data.item.name }}
+                        </b-tooltip>
+                    </template>
 
-                <template
-                    slot="latestSignedBlock"
-                    slot-scope="data">
-                    <div>
-                        <span
-                            :class="`XDC-status-dot float-left mr-2 XDC-status-dot--${getColor(
-                            data.item.latestSignedBlock || 0, currentBlock)}`">
-                            {{ data.item.latestSignedBlock || 0 }}
-                        </span>
-                    </div>
-                </template>
+                    <template
+                        slot="capacity"
+                        slot-scope="data">{{ formatCurrencySymbol(formatBigNumber(data.item.cap, 2)) }}
+                    </template>
 
-                <template
-                    slot="status"
-                    slot-scope="data">
-                    <div class="mt-2 mt-lg-0">
-                        <span
-                            :class="'XDC-chip '
-                                + (data.item.status === 'STANDBY' || data.item.status === 'MASTERNODE' ?
-                            'XDC-chip--primary' : 'XDC-chip--accent') ">
-                            {{ data.item.status.toUpperCase() }}
-                        </span>
-                    </div>
-                </template>
-                <!-- <template
-                    slot="action"
-                    slot-scope="data">
-                    <b-button
-                        variant="primary"
-                        class="mt-3 mt-lg-0 vote-btn"
-                        @click="onRowClick(data.item.address)">Vote</b-button>
-                </template> -->
-            </b-table>
-            <b-pagination
-                v-if="totalRows > 0 && totalRows > perPage"
-                :total-rows="totalRows"
-                :per-page="perPage"
-                v-model="currentPage"
-                align="center"
-                class="XDC-pagination"
-                @change="pageChange"/>
+                    <template
+                        slot="latestSignedBlock"
+                        slot-scope="data">
+                        <div>
+                            <span
+                                :class="`float-left mr-2 ${(data.item.status !== 'STANDBY')
+                                    ? ` XDC-status-dot XDC-status-dot--${getColor(
+                                data.item.latestSignedBlock || '', currentBlock)}` : '' }`">
+                                {{ data.item.latestSignedBlock }}
+                            </span>
+                        </div>
+                    </template>
+
+                    <template
+                        slot="status"
+                        slot-scope="data">
+                        <div class="mt-2 mt-lg-0">
+                            <span
+                                :class="'XDC-chip '
+                                    + (data.item.status === 'STANDBY' || data.item.status === 'MASTERNODE' ?
+                                'XDC-chip--primary' : 'XDC-chip--accent') ">
+                                {{ data.item.status.toUpperCase() }}
+                            </span>
+                        </div>
+                    </template>
+
+                    <!--<template
+                        slot="action"
+                        slot-scope="data">
+                        <b-button
+                            v-if="data.item.status === 'STANDBY' || data.item.status === 'MASTERNODE'"
+                            variant="primary"
+                            class="mt-3 mt-lg-0 vote-btn"
+                            @click="onRowClick(data.item.address)">Vote</b-button>
+                    </template>-->
+                </b-table>
+                <b-pagination
+                    v-if="totalRows > 0 && totalRows > perPage"
+                    :total-rows="totalRows"
+                    :per-page="perPage"
+                    v-model="currentPage"
+                    align="center"
+                    class="XDC-pagination"
+                    @change="pageChange"/>
+            </b-card>
         </div>
     </div>
 </template>
@@ -189,6 +175,7 @@
 import axios from 'axios'
 import BigNumber from 'bignumber.js'
 import store from 'store'
+import Web3 from 'xdc3'
 
 export default {
     name: 'App',
@@ -196,36 +183,12 @@ export default {
         return {
             chainConfig: {},
             fields: [
-                {
-                    key: 'address',
-                    label: 'Address',
-                    sortable: false
-                },
-                {
-                    key: 'name',
-                    label: 'Name',
-                    sortable: true
-                },
-                {
-                    key: 'capacity',
-                    label: 'Capacity',
-                    sortable: true
-                },
-                {
-                    key: 'latestSignedBlock',
-                    label: 'Latest Signed Block',
-                    sortable: true
-                },
-                {
-                    key: 'status',
-                    label: 'Status',
-                    sortable: false
-                },
-                {
-                    key: 'action',
-                    label: '',
-                    sortable: false
-                }
+                { key: 'rank', label: 'Rank' },
+                { key: 'address', label: 'Address', sortable: false },
+                { key: 'name', label: 'Name', sortable: false },
+                { key: 'capacity', label: 'Capacity', sortable: true },
+                { key: 'latestSignedBlock', label: 'Latest Signed Block', sortable: true },
+                { key: 'status', label: 'Status', sortable: false }
             ],
             sortBy: 'capacity',
             sortDesc: true,
@@ -235,7 +198,7 @@ export default {
             voteValue: 1,
             candidates: [],
             currentPage: this.$store.state.currentPage || 1,
-            perPage: 50,
+            perPage: 30,
             totalRows: 0,
             tableCssClass: '',
             loading: false,
@@ -246,30 +209,51 @@ export default {
             resignedMN: 0,
             slashedMN: 0,
             totalProposedNodes: 0,
-            currentTable: 'masternodes'
+            currentTable: 'masternodes',
+            averageStakingROI: '',
+            averageOwnerROI: '',
+            currentBlock: ''
         }
     },
-    computed: {},
+    computed: {
+        mobileCheck: () => {
+            const isAndroid = navigator.userAgent.match(/Android/i)
+            const isIOS = navigator.userAgent.match(/iPhone|iPad|iPod/i)
+            return (isAndroid || isIOS)
+        }
+    },
     watch: {},
     updated () {},
     created: async function () {
         let self = this
-        let account
         self.isReady = !!self.web3
-        let config = await self.appConfig()
+        const config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = config.blockchain
         self.currentBlock = self.chainConfig.blockNumber
 
         try {
-            if (self.isReady) {
-                let contract = await self.getXDCValidatorInstance()
-                if (store.get('address')) {
-                    account = store.get('address').toLowerCase()
+            if (self.isReady || window.web3) {
+                if (window.web3 && window.web3.currentProvider &&
+                    window.web3.currentProvider.isXDCWallet) {
+                    const wjs = new Web3(window.web3.currentProvider)
+                    await self.setupProvider('XDCwalletDapp', wjs)
+                    self.account = await self.getAccount()
+                    if (self.account.substring(0, 2) === '0x') {
+                        self.account = 'xdc' + self.account.substring(2)
+                    }
+                    if (self.account) {
+                        self.$store.state.address = self.account
+                        store.set('address', self.account.toLowerCase())
+                        store.set('network', 'XDCwalletDapp')
+                        self.$bus.$emit('logged', 'user logged')
+                    }
                 } else {
-                    account = this.$store.state.walletLoggedIn
-                        ? this.$store.state.walletLoggedIn : await self.getAccount()
+                    self.account = store.get('address') ||
+                    self.$store.state.address || await self.getAccount()
                 }
-                if (account && contract) {
+                let contract
+                contract = self.XDCValidator
+                if (self.account && contract) {
                     self.isXDCnet = true
                 }
             }
@@ -277,11 +261,13 @@ export default {
             console.log(error)
         }
         self.getDataFromApi()
+        // self.averageroi()
     },
     mounted () { },
     methods: {
         watch: async function () {
             let contract = await self.getXDCValidatorInstance()
+            contract = self.XDCValidator
             const allEvents = contract.allEvents({
                 fromBlock: self.blockNumber,
                 toBlock: 'latest'
@@ -335,6 +321,15 @@ export default {
             }
             return result
         },
+
+        toXDCNumber: (wei) => {
+            BigNumber.config({ EXPONENTIAL_AT: [-100, 100] })
+
+            const weiNumber = new BigNumber(wei.toString())
+            const divided = 10 ** 18
+            return weiNumber.dividedBy(divided)
+            // web3.utils.fromWei(wei, 'ether')
+        },
         async getDataFromApi () {
             const self = this
             try {
@@ -357,16 +352,15 @@ export default {
                         status: candidate.status,
                         isMasternode: candidate.isMasternode,
                         isPenalty: candidate.isPenalty,
-                        name: candidate.name || 'XinFin MasterNode',
+                        name: candidate.name || 'XDC.Network',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock,
+                        latestSignedBlock: candidate.latestSignedBlock || 0,
                         rank: candidate.rank
                     })
                 })
                 self.candidates = items
 
                 self.activeCandidates = candidates.data.activeCandidates
-                self.activeTotalCandidates = candidates.data.activeCandidates + candidates.data.totalProposed
                 self.totalRows = candidates.data.activeCandidates
                 self.resignedMN = candidates.data.totalResigned
                 self.totalProposedNodes = candidates.data.totalProposed
@@ -411,9 +405,9 @@ export default {
                         status: candidate.status,
                         isMasternode: candidate.isMasternode,
                         isPenalty: candidate.isPenalty,
-                        name: candidate.name || 'XinFin MasterNode',
+                        name: candidate.name || 'XDC.Network',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: candidate.latestSignedBlock || 0
                     })
                 })
                 self.candidates = items
@@ -449,9 +443,9 @@ export default {
                         status: candidate.status,
                         isMasternode: candidate.isMasternode,
                         isPenalty: candidate.isPenalty,
-                        name: candidate.name || 'XinFin MasterNode',
+                        name: candidate.name || 'XDC.Network',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: '---' // candidate.latestSignedBlock
                     })
                 })
                 self.candidates = items
@@ -486,9 +480,9 @@ export default {
                         status: candidate.status,
                         isMasternode: candidate.isMasternode,
                         isPenalty: candidate.isPenalty,
-                        name: candidate.name || 'XinFin MasterNode',
+                        name: candidate.name || 'XDC.Network',
                         cap: new BigNumber(candidate.capacity).div(10 ** 18).toNumber(),
-                        latestSignedBlock: candidate.latestSignedBlock
+                        latestSignedBlock: candidate.latestSignedBlock || 0
                     })
                 })
                 self.candidates = items
@@ -528,6 +522,19 @@ export default {
                 this.getDataFromApi()
                 break
             }
+        },
+        async averageroi () {
+            axios.get('/api/voters/averageroi')
+                .then(result => {
+                    if (result.data && result.data.averageStakingROI) {
+                        this.averageStakingROI = result.data.averageStakingROI.toFixed(2)
+                        this.averageOwnerROI = result.data.averageOwnerROI.toFixed(2)
+                    }
+                })
+                .catch(error => {
+                    console.log(error)
+                    this.$toasted.show(error, { type: 'error' })
+                })
         }
     }
 }

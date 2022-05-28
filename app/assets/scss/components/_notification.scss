@@ -34,8 +34,12 @@
 
 .notification__bell {
     position: absolute;
-    top: -10%;
-    left: 60%;
+    top: -25%;
+    left: 30%;
+    @include media-breakpoint-down(sm) {
+        top: -25% !important;
+        left: 30% !important;
+    }
 }
 
 .readAllBtn {
@@ -60,7 +64,8 @@
     background: rgb(240, 159, 9);
     color: rgb(255, 255, 255) !important;
 }
-.proposed {
+.proposed,
+.withdraw {
     background: #678be0;
 }
 .outtop {

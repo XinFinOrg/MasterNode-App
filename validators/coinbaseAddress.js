@@ -6,6 +6,6 @@ Object.defineProperty(exports, '__esModule', {
 
 var _common = require('vuelidate/lib/validators/common')
 
-var coinbaseRegex = /^(xdc|0x)?[a-fA-F0-9]{40}$/
+var coinbaseRegex = /^xdc[a-fA-F0-9]{40}$/
 
 exports.default = (0, _common.regex)('coinbase', coinbaseRegex)

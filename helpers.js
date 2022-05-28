@@ -1,51 +1,23 @@
 const bip39 = require('bip39')
-const hdkey = require('ethereumjs-wallet/hdkey')
+// const hdkey = require('ethereumjs-wallet/hdkey')
+const { hdkey } = require('ethereumjs-wallet')
 const ProviderEngine = require('web3-provider-engine')
 const FiltersSubprovider = require('web3-provider-engine/subproviders/filters.js')
 const HookedSubprovider = require('web3-provider-engine/subproviders/hooked-wallet.js')
-const ProviderSubprovider = require('web3-provider-engine/subproviders/provider.js')
-const Web3 = require('xdc3')
+const RpcSubprovider = require('web3-provider-engine/subproviders/rpc.js')
+// const ProviderSubprovider = require('web3-provider-engine/subproviders/provider.js')
+// const Web3 = require('xdc3')
 const Transaction = require('ethereumjs-tx')
 const ethUtil = require('ethereumjs-util')
 
 /* eslint-disable */
-
-// function HDWalletProvider(
-// 	mnemonic,
-// 	provider_url,
-// 	address_index = 0,
-// 	num_addresses = 1,
-// 	wallet_hdpath = "m/44'/889'/0'/0"
-// ) {
-// 	try {
-
-// 		this.mnemonic = mnemonic
-// 		if (!bip39.validateMnemonic(this.mnemonic)) {
-// 			throw new Error('Invalid Mnemonic Supplied')
-// 		}
-// 		this.hdwallet = hdkey.fromMasterSeed(bip39.mnemonicToSeed(mnemonic))
-// 		this.wallet_hdpath = wallet_hdpath
-// 		this.wallets = {}
-// 		this.addresses = []
-
-// 		for (let i = address_index; i < address_index + num_addresses; i++) {
-// 			const wallet = this.hdwallet.derivePath(this.wallet_hdpath + '/' + i).getWallet();
-// 			const addr = '0x' + wallet.getAddress().toString('hex');
-// 			this.addresses.push(addr);
-// 			this.wallets[addr] = wallet;
-// 		}
-// 		console.log(this)
-// 	} catch (error) {
-// 		throw error
-// 	}
-// }
 
 function HDWalletProvider (
     mnemonic,
     provider_url,
     address_index = 0,
     num_addresses = 1,
-    wallet_hdpath = "m/44'/889'/0'/0/"
+    wallet_hdpath = "m/44'/551'/0'/0/"
   ) {
     this.mnemonic = mnemonic
     this.hdwallet = hdkey.fromMasterSeed(bip39.mnemonicToSeed(mnemonic))
@@ -75,7 +47,7 @@ function HDWalletProvider (
             else { cb('Account not found') }
             const tx = new Transaction(txParams)
             tx.sign(pkey)
-            const rawTx = '0x' + tx.serialize().toString('hex')
+            const rawTx = 'xdc' + tx.serialize().toString('hex')
             cb(null, rawTx)
 		},
 		signMessage(message, cb) {
@@ -95,8 +67,11 @@ function HDWalletProvider (
 		}	
     }))
     this.engine.addProvider(new FiltersSubprovider())
-    Web3.providers.HttpProvider.prototype.sendAsync = Web3.providers.HttpProvider.prototype.send
-    this.engine.addProvider(new ProviderSubprovider(new Web3.providers.HttpProvider(provider_url)))
+    // Web3.providers.HttpProvider.prototype.sendAsync = Web3.providers.HttpProvider.prototype.send
+    // this.engine.addProvider(new ProviderSubprovider(new Web3.providers.HttpProvider(provider_url)))
+    this.engine.addProvider(new RpcSubprovider({
+      rpcUrl: provider_url,
+    }))
     this.engine.start() // Required by the provider engine.
 }
 

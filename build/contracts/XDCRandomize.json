@@ -98,9 +98,9 @@
   "sourceMap": "57:744:1:-;;;246:99;8:9:-1;5:2;;;30:1;27;20:12;5:2;246:99:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;;325:13;310:12;:28;;;;246:99;57:744;;;;;;",
   "deployedSourceMap": "57:744:1:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;557:118;;8:9:-1;5:2;;;30:1;27;20:12;5:2;557:118:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;23:1:-1;8:100;33:3;30:1;27:10;8:100;;;99:1;94:3;90:11;84:18;80:1;75:3;71:11;64:39;52:2;49:1;45:10;40:15;;8:100;;;12:14;557:118:1;;;;;;;;;;;;;;;;;351:96;;8:9:-1;5:2;;;30:1;27;20:12;5:2;351:96:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;118:27;;8:9:-1;5:2;;;30:1;27;20:12;5:2;118:27:1;;;;;;;;;;;;;;;;;;;;;;;681:118;;8:9:-1;5:2;;;30:1;27;20:12;5:2;681:118:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;453:98;;8:9:-1;5:2;;;30:1;27;20:12;5:2;453:98:1;;;;;;;;;;;;;;;;;;;;;;;;;;;;;557:118;616:9;644:12;:24;657:10;644:24;;;;;;;;;;;;;;;637:31;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;557:118;;;:::o;351:96::-;433:7;406:12;:24;419:10;406:24;;;;;;;;;;;;;;;:34;;;;;;;;;;;;:::i;:::-;;351:96;:::o;118:27::-;;;;:::o;681:118::-;741:7;767:13;:25;781:10;767:25;;;;;;;;;;;;;;;;760:32;;681:118;;;:::o;453:98::-;536:8;508:13;:25;522:10;508:25;;;;;;;;;;;;;;;:36;;;;;;;453:98;:::o;57:744::-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;:::o;:::-;;;;;;;;;;;;;;;;;;;;;;;;;;;:::o",
   "source": "pragma solidity ^0.4.21;\n\nimport \"./libs/SafeMath.sol\";\n\ncontract XDCRandomize {\n    using SafeMath for uint256;\n    uint256 public randomNumber;\n\n    mapping (address=>bytes32[]) randomSecret;\n    mapping (address=>bytes32) randomOpening;\n\n    function XDCRandomize (uint256 _randomNumber) public {\n        randomNumber = _randomNumber;\n    }\n\n    function setSecret(bytes32[] _secret) public {\n        randomSecret[msg.sender] = _secret;\n    }\n\n    function setOpening(bytes32 _opening) public {\n        randomOpening[msg.sender] = _opening;\n    }\n\n    function getSecret(address _validator) public view returns(bytes32[]) {\n        return randomSecret[_validator];\n    }\n\n    function getOpening(address _validator) public view returns(bytes32) {\n        return randomOpening[_validator];\n    }\n}\n",
-  "sourcePath": "/home/vagrant/projects/masternode-app/contracts/XDCRandomize.sol",
+  "sourcePath": "/home/vagrant/projects/masternodeapp/contracts/XDCRandomize.sol",
   "ast": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/XDCRandomize.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/XDCRandomize.sol",
     "exportedSymbols": {
       "XDCRandomize": [
         178
@@ -121,7 +121,7 @@
         "src": "0:24:1"
       },
       {
-        "absolutePath": "/home/vagrant/projects/masternode-app/contracts/libs/SafeMath.sol",
+        "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/libs/SafeMath.sol",
         "file": "./libs/SafeMath.sol",
         "id": 101,
         "nodeType": "ImportDirective",
@@ -1005,7 +1005,7 @@
     "src": "0:802:1"
   },
   "legacyAST": {
-    "absolutePath": "/home/vagrant/projects/masternode-app/contracts/XDCRandomize.sol",
+    "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/XDCRandomize.sol",
     "exportedSymbols": {
       "XDCRandomize": [
         178
@@ -1026,7 +1026,7 @@
         "src": "0:24:1"
       },
       {
-        "absolutePath": "/home/vagrant/projects/masternode-app/contracts/libs/SafeMath.sol",
+        "absolutePath": "/home/vagrant/projects/masternodeapp/contracts/libs/SafeMath.sol",
         "file": "./libs/SafeMath.sol",
         "id": 101,
         "nodeType": "ImportDirective",
@@ -1914,25 +1914,25 @@
     "version": "0.4.24+commit.e67f0147.Emscripten.clang"
   },
   "networks": {
-    "853": {
+    "88": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000090",
       "transactionHash": "0x1b05c30c812609f5a4e675766416c986660e6066dfaea1e15556ceaae0111ebe"
     },
-    "853": {
+    "89": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000090",
       "transactionHash": "0x1b05c30c812609f5a4e675766416c986660e6066dfaea1e15556ceaae0111ebe"
     },
-    "853": {
+    "90": {
       "events": {},
       "links": {},
       "address": "0x0000000000000000000000000000000000000090",
       "transactionHash": "0x1b05c30c812609f5a4e675766416c986660e6066dfaea1e15556ceaae0111ebe"
     },
-    "853": {
+    "1532931637365": {
       "events": {},
       "links": {},
       "address": "0x7ef409fa302862f3aad0271f93407f696d7e29d4",

@@ -2,11 +2,13 @@
     text-align: center;
     color: #ffffff;
     text-transform: capitalize;
-    border-radius: 8px;
+    border-radius: 16px;
     display: inline-block;
     vertical-align: middle;
     font-weight: 500;
-    padding: 10px 20px;
+    padding: 4px;
+    font-size: 10px;
+    min-width: 100px;
 
     &--primary {
         color: #7473a6;

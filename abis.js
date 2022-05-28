@@ -5,7 +5,7 @@ const fs = require('fs')
 // copy & save XDCValidator
 let XDCValidatorAbi = require('./build/contracts/XDCValidator.json')
 let networks = XDCValidatorAbi.networks
-networks['89'].address = '0x0000000000000000000000000000000000000088'
+networks['551'].address = '0x0000000000000000000000000000000000000088'
 let data = JSON.stringify(XDCValidatorAbi, null, 2)
 fs.writeFileSync('./abis/XDCValidator.json', data)
 

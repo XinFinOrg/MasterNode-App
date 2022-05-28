@@ -1,80 +1,74 @@
 <template>
     <div id="app">
         <div class="page-layout">
-            <b-navbar>
+            <b-navbar
+                toggleable="lg"
+                type="dark">
                 <div class="container">
                     <b-navbar-brand to="/">
-                        Home
+                        <img src="/app/assets/img/logo.svg" >
                     </b-navbar-brand>
-
-                    <b-nav-form class="search-form">
-                        <b-form-input
-                            v-model="search"
-                            type="text"
-                            autocomplete="off"
-                            placeholder="Search Node..."
-                            @keyup.enter="searchCandidate"
-                        />
-                        <b-button
-                            variant="outline-success"
-                            type="submit"
-                            @click="searchCandidate">Search</b-button>
-
-                    </b-nav-form>
-
-                    <div class="navbar-buttons">
-                        <b-button
-                            id="btn-become-candidate"
-                            href="https://github.com/XinFinOrg/XinFin-Node"
-                            target="_blank"
-                            variant="primary">Setup MasterNode</b-button>
-                        <b-button
-                            v-if="!isXDCnet"
-                            id="btn-become-candidate"
-                            to="/setting"
-                            variant="primary">Login</b-button>
-                        <b-button
-                            v-else
-                            id="btn-become-candidate"
-                            to="/apply"
-                            variant="primary">Become a MasterNode</b-button>
-                        <!-- <a
-                            target="_blank"
-                            href="https://xinfin.network/#webWallet"><i class=""/> New to XinFin ? Create an Wallet</a> -->
-                        <b-dropdown
-                            v-if="isXDCnet"
-                            class="dd-setting"
-                            right
-                            offset="25"
-                            no-caret
-                            variant="primary">
-                            <template
-                                slot="button-content">
-                                <i class="tm-cog ml-2 icon-2x"/>
-                            </template>
-                            <!-- <b-dropdown-item
-                                :to="`/voter/${account}`"
-                                class="dd-address">
-                                {{ truncate(account, 20) }}
-                            </b-dropdown-item>
-                            <b-dropdown-divider /> -->
-                            <b-dropdown-item
-                                target="_bank"
-                                href="https://github.com/xinfinorg/">Help</b-dropdown-item>
-                            <b-dropdown-item to="/setting">Settings/Withdraws</b-dropdown-item>
-                            <b-dropdown-divider />
-                            <b-dropdown-item
-                                href="/"
-                                @click="signOut">Sign out</b-dropdown-item>
-                        </b-dropdown>                        <!-- <router-link
-                        v-if="isXDCnet"
-                        id="btn-setting"
-                        to="/setting">
-                        <i class="tm-dots color-btn-bg"/>Setting</router-link> -->
-                    </div>
+                    <b-navbar-toggle
+                        target="nav-collapse"
+                        class="btn-menu-sp"/>
+                    <b-collapse
+                        id="nav-collapse"
+                        is-nav>
+                        <!-- Right aligned nav items -->
+                        <b-navbar-nav class="ml-auto ">
+                            <b-nav-form class="search-form">
+                                <auto-complete
+                                    v-model="search"
+                                    :items="items"/>
+                                <b-button
+                                    variant="outline-success"
+                                    type="submit"
+                                    @click="searchCandidate">Search</b-button>
+                            </b-nav-form>
+                        </b-navbar-nav>
+                        <b-navbar-nav class="ml-auto navbar-buttons">
+                            <b-button
+                                v-if="!isXDCnet"
+                                id="btn-become-candidate"
+                                to="/setting"
+                                variant="primary">Login</b-button>
+                            <b-button
+                                v-else
+                                id="btn-become-candidate"
+                                to="/apply"
+                                variant="primary">Become a candidate</b-button>
+                            <b-dropdown
+                                v-if="isXDCnet"
+                                class="dd-setting ml-1"
+                                right
+                                offset="25"
+                                no-caret
+                                variant="primary">
+                                <template
+                                    slot="button-content">
+                                    <i class="tm-cog icon-2x"/>
+                                </template>
+                                <b-dropdown-item
+                                    :to="`/voter/${account}`"
+                                    class="dd-address">
+                                    {{ truncate(account, 20) }}
+                                </b-dropdown-item>
+                                <b-dropdown-divider />
+                                <b-dropdown-item
+                                    target="_bank"
+                                    href="https://howto.xinfin.org/">Help</b-dropdown-item>
+                                <b-dropdown-item to="/setting">Settings/Withdraws</b-dropdown-item>
+                                <b-dropdown-divider />
+                                <b-dropdown-item
+                                    v-if="!mobileCheck && isXDCnet"
+                                    href="/"
+                                    @click="signOut">Sign out</b-dropdown-item>
+                            </b-dropdown>
+                        </b-navbar-nav>
+                    </b-collapse>
                 </div>
             </b-navbar>
-            <div class="main-content">
+            <div>
                 <router-view/>
             </div>
             <footer
@@ -82,27 +76,32 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-md-8">
-                            <div class="XDC-footer__copyright">
-                                &copy; {{ (new Date()).getFullYear() }} XinFin. All Rights Reserved.
-                            </div>
-                            <div class="XDC-footer__links">
+                            <!-- <div class="XDC-footer__links">
                                 <ul class="list-inline">
                                     <li class="list-inline-item">
                                         <a
-                                            target="_blank"
-                                            href="https://www.xinfin.org/"><i class="tm-lifebuoy mr-1"/>Need help?</a>
-                                    </li>
-                                    <!-- <li class="list-inline-item">
-                                        <a
-                                            target="_blank"
-                                            href="/privacyPolicy"><i class="tm-lock mr-1"/>Privacy Policy</a>
-                                    </li>
+                                            :href="needHelpLink"
+                                            target="_blank">Need help?</a>
+                                    </li>|
                                     <li class="list-inline-item">
                                         <a
                                             target="_blank"
-                                            href="/terms"><i class="tm-profile mr-1"/>Terms of Service</a>
-                                    </li> -->
+                                            href="https://docs.xinfin.network/legal/privacy">Privacy Policy</a>
+                                    </li>|
+                                    <li class="list-inline-item">
+                                        <a
+                                            target="_blank"
+                                            href="https://docs.xinfin.network/legal/terms-of-use">Terms of Use</a>
+                                    </li>|
+                                    <li class="list-inline-item">
+                                        <a
+                                            target="_blank"
+                                            href="/api-docs">API Documentation</a>
+                                    </li>
                                 </ul>
+                            </div> -->
+                            <div class="XDC-footer__copyright">
+                                &copy; {{ (new Date()).getFullYear() }} XDC.Network All rights reserved.
                             </div>
                         </div>
                         <div class="col-md-4 XDC-footer__social">
@@ -159,6 +158,12 @@ import pkg from '../package.json'
 import AutoComplete from './components/AutoComplete.vue'
 export default {
     name: 'App',
+    metaInfo: {
+        title: 'XDC Network Governance DApp ',
+        meta: [
+            { name: 'description', content: 'Providing a professional UI which allows coin-holders to stake for masternodes, decentralized governance and explore masternode performance statistics' } // eslint-disable-line
+        ]
+    },
     components: {
         AutoComplete
     },
@@ -175,7 +180,15 @@ export default {
             statusClass: '',
             interval: '',
             notifications: [],
-            readNoti: 0
+            readNoti: 0,
+            needHelpLink: 'https://docs.xinfin.network/faq/products/xdcchain-applications/masternodeapp'
+        }
+    },
+    computed: {
+        mobileCheck: () => {
+            const isAndroid = navigator.userAgent.match(/Android/i)
+            const isIOS = navigator.userAgent.match(/iPhone|iPad|iPod/i)
+            return (isAndroid || isIOS)
         }
     },
     async updated () {
@@ -199,15 +212,15 @@ export default {
                     await self.getNotification()
                 }, 500)
             })
-            const candidates = await axios.get('/api/candidates')
-            const map = candidates.data.items.map((c) => {
-                return {
-                    name: c.name ? c.name : 'XinFin MasterNode',
-                    address: c.candidate
-                }
-            })
-            const mapping = await Promise.all(map)
-            self.items = mapping
+            // const candidates = await axios.get('/api/candidates')
+            // const map = candidates.data.items.map((c) => {
+            //     return {
+            //         name: c.name ? c.name : 'XDC.Network',
+            //         address: c.candidate
+            //     }
+            // })
+            // const mapping = await Promise.all(map)
+            // self.items = mapping
             setTimeout(async () => {
                 await self.getNotification()
             }, 500)
@@ -253,12 +266,12 @@ export default {
             let self = this
             setTimeout(async () => {
                 try {
-                    const contract = await self.getXDCValidatorInstance()
-                    if (store.get('address')) {
-                        self.account = store.get('address').toLowerCase()
-                    } else {
-                        self.account = this.$store.state.walletLoggedIn
-                            ? this.$store.state.walletLoggedIn : await self.getAccount()
+                    let contract// = await self.getXDCValidatorInstance()
+                    contract = self.XDCValidator
+                    self.account = store.get('address') ||
+                        self.$store.state.address || await self.getAccount()
+                    if (self.account.substring(0, 2) === '0x') {
+                        self.account = 'xdc' + self.account.substring(2)
                     }
                     if (self.account && contract) {
                         self.isXDCnet = true
@@ -268,7 +281,8 @@ export default {
         },
         signOut () {
             store.clearAll()
-            this.$store.state.walletLoggedIn = null
+            Object.assign(this.$store.state, this.getDefaultState())
+            // this.$store.state.address = null
 
             this.$router.go({
                 path: '/'

@@ -1,5 +1,4 @@
 .XDC-info {
-    margin-bottom: 30px;
 
     .XDC-info__title {
         margin-bottom: 5px;
@@ -18,7 +17,7 @@
     }
 
     .XDC-info__text {
-        font-size: 14px;
+        font-size: 12px;
         display: inline-block;
         vertical-align: middle;
         text-transform: capitalize;
@@ -28,7 +27,6 @@
         font-size: 16px;
         color: #938fb5;
         display: inline-block;
-        margin-left: 16px;
         margin-bottom: 0;
     }
 
@@ -41,5 +39,27 @@
         .XDC-info__description {
             margin-left: 20px;
         }
+    }
+}
+
+.XDC-detail {
+    &-section{
+        margin-bottom: 16px;
+    }
+    &-label {
+        font-size: 12px;
+    }
+    &-value {
+        font-size: 18px;
+        color: $black;
+    }
+    &-value-small {
+        font-size: 12px;
+        color: $black;
+    }
+    &-value-big {
+        font-size: 18px;
+        font-weight: 600;
+        color: $black;
     }
 }

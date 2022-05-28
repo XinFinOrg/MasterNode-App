@@ -14,17 +14,17 @@
                     </p>
                     <h3 style="text-align: center">INTRODUCTION</h3>
                     <p>
-                        Welcome to MasterNode-App, a free, open-source, client-side tool for interacting with the
-                        blockchain. XinFin values privacy and we make a concerted effort to minimize and,
+                        Welcome to XDC Network Governance DApp, a free, open-source, client-side tool for interacting with the
+                        blockchain. XDC Network values privacy and we make a concerted effort to minimize and,
                         to the extent possible, eliminate the exposure of personal data during the use of our
-                        interface. MasterNode-App does not collect, hold, or store keys, account information,
+                        interface. XDC Network Governance DApp does not collect, hold, or store keys, account information,
                         or passwords. We do not collect data passively, do not monetize the collection of data,
                         and do not use your data for marketing or advertising.
                     </p>
                     <p>
                         To the extent we collect any personal information, this privacy policy (“Policy”)
-                        describes how MasterNode-App collects, uses, and shares personal information of people who visit
-                        our website (the “Site”), use our mobile application, MasterNode-App (the “App”),
+                        describes how XDC Network Governance DApp collects, uses, and shares personal information of people who visit
+                        our website (the “Site”), use our mobile application, XDC Network Governance DApp (the “App”),
                         or otherwise use our services (collectively, the “Services”).
                     </p>
                     <p>
@@ -44,8 +44,8 @@
                         style="text-align: center">
                         THE BLOCKCHAIN</h3>
                     <p>
-                        Due to the inherent transparency of many blockchains, including the XinFin Blockchain,
-                        transactions that individuals broadcast via MasterNode-App may be publicly accessible.
+                        Due to the inherent transparency of many blockchains, including the XDC Network Blockchain,
+                        transactions that individuals broadcast via XDC Network Governance DApp may be publicly accessible.
                         This includes, but is not limited to, your public sending address, the public address of the
                         receiver, the amount sent or received, and any other data a user has chosen to include in a
                         given transaction. Information stored on a blockchain may be public, immutable, and difficult or
@@ -64,12 +64,12 @@
                         We may collect Personal Information you choose to provide to us. For example,
                         when you contact us for support through the Services, you give us with your e-mail address and
                         any other information that you choose to provide. Also, if you participate in a
-                        MasterNode-App offer, give-away, or promotion (“Promotion”), you provide your name,
+                        XDC Network Governance DApp offer, give-away, or promotion (“Promotion”), you provide your name,
                         e-mail address, and mailing address.
                     </p>
                     <h5>California Do Not Track Disclosures</h5>
                     <p>
-                        MasterNode-App does not track users over time and across third party websites to provide targeted
+                        XDC Network Governance DApp does not track users over time and across third party websites to provide targeted
                         advertising and therefore does not respond to Do Not Track (DNT) signals.
                     </p>
                     <h3 style="text-align: center">USE OF INFORMATION</h3>
@@ -92,7 +92,7 @@
                         We may share the Personal Information we collect from and about you (1) to fulfill the
                         purpose for which you provided it; (2) with your consent; (3) for legal, protection, and
                         safety purposes; (4) to comply with any court order, law, or legal process, including to respond
-                        to any government or regulatory request; (5) to protect the rights of MasterNode-App, our agents,
+                        to any government or regulatory request; (5) to protect the rights of XDC Network Governance DApp, our agents,
                         customers, and others, including by enforcing our agreements, policies, and terms of service;
                         and (6) with those who need it to do work for us (our Service Providers, as defined below).
                     </p>
@@ -211,7 +211,7 @@
 export default {
     data: () => {
         return {
-            email: 'admin@xinfin.org'
+            email: 'admin@xinfin.network'
         }
     }
 }

@@ -4,7 +4,7 @@
 
 .section-title {
     font-size: 20px;
-    font-weight: 400;
+    font-weight: 200;
     color: #495057;
     text-align: left;
     line-height: 1.2;
@@ -16,14 +16,13 @@
     }
 
     &__description {
-        font-size: 16px;
+        font-size: 12px;
         display: block;
         color: $color-text;
         margin-top: 10px;
     }
 }
 
-.section--status,
 .section--voter {
     margin-bottom: 30px;
 }
@@ -74,5 +73,41 @@
 .section--hardware {
     > .row > div:first-child {
         margin-bottom: 60px;
+    }
+}
+
+.XDC-header {
+    background-color: #ffffff;
+    box-shadow: 0 10px 10px 0 rgba(0, 0, 0, 0.01);
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    margin-top: -10px;
+    padding: 34px 24px 24px;
+    z-index: 1;
+    position: relative;
+
+    &-block {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        &-left {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            .XDC-header__icon{
+                margin-right: 12px;
+                font-size: 36px;
+            }
+            img {
+                margin-right: 12px;
+            }
+            h4, p {
+                margin: 0;
+            }
+        }
+        &-right {
+            margin: 0;
+        }
     }
 }

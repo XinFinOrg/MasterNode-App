@@ -1,0 +1,63 @@
+.XDC-tab {
+  .card-header {
+    padding: 0 12px;
+    background-color: transparent;
+    border: none;
+  }
+
+  .tab-pane {
+    padding: 12px 0;
+  }
+  .nav-item{
+    .nav-link{
+      border-radius: 0;
+      background-color: $tab-color;
+      color: $color-text-2;
+      &.active {
+        background-color: $color-btn-bg;
+        color: $white;
+      }
+    }
+    &:first-child{
+      .nav-link{
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+      }
+    }
+    &:last-child{
+      .nav-link{
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+      }
+    }
+  }
+}
+.XDC-custom-tab {
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+    li {
+      border-radius: 0;
+      background-color: $tab-color;
+      color: $color-text-2;
+      display: block;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      &.active{
+        background-color: $color-btn-bg;
+        color: $white;
+      }
+      &:first-child{
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+      }
+      &:last-child{
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+      }
+    }
+  }
+}

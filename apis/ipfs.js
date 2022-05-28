@@ -17,7 +17,7 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
 
 router.post('/addKYC', async function (req, res, next) {
     // console.log(req.files)
-    // console.log('File Name : ', req.files.filename)
+    console.log('File Name : ', req.files)
     let imageFile = req.files.filename
 
     xinFinClient.add(imageFile.data, async (err, ipfsHash) => {

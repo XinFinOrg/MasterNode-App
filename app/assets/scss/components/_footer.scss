@@ -1,10 +1,10 @@
 .XDC-footer {
   padding: 20px 0;
-  background-color: #FFFFFF;
+  background-color: $color-body-dark-bg;
   border-top: 1px solid rgba(0,0,0,.06);
 
   a {
-    color: #a9a6ad;
+    color: #919BAA;
   }
 
   a:hover {
@@ -13,14 +13,39 @@
 
   &__copyright {
     margin-bottom: 1rem;
+    color: #919BAA;
 
     a {
-      color: #7573a6;
+      color: #919BAA;
     }
   }
 
   &__social {
     font-size: 18px;
+    .list-inline {
+      display: flex;
+      justify-content: flex-end;
+      &-item {
+        padding: 4px;
+        background-color: rgba(33, 40, 51, 0.75);
+        height: 28px;
+        width: 28px;
+        border-radius: 50%;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        a {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+  }
+
+  &__links {
+    margin-top: 1rem;
   }
 
   @include media-breakpoint-up(md) {
