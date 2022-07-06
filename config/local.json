@@ -10,10 +10,10 @@
         "https://swagger.apothem.network"
     ],
     "blockchain": {
-        "rpc": "https://ws.apothem.network",
-        "ws": "wss://ws.apothem.network/ws",
-        "internalRpc": "https://ws.apothem.network",
-        "internalWs": "wss://ws.apothem.network/ws",
+        "rpc": "https://mnrpc.xinfin.network",
+        "ws": "wss://mnws.xinfin.network/",
+        "internalRpc": "http://localhost:8989",
+        "internalWs": "ws://localhost:8888",
         "networkId": 50,
         "epoch": 900,
         "blockTime": 2,
@@ -28,11 +28,11 @@
         "randomizeAddress": "0x0000000000000000000000000000000000000090"
     },
     "db": {
-        "uri": "mongodb://localhost:27017/gTestNet"
+        "uri": "mongodb://localhost:27017/gMainNet"
     },
-    "explorerUrl": "https://apothem.blocksscan.io",
-    "XDCscanUrl": "https://apothem.blocksscan.io",
-    "baseUrl": "https://master.apothem.network/",
+    "explorerUrl": "https://xdc.blocksscan.io",
+    "XDCscanUrl": "https://xdc.blocksscan.io",
+    "baseUrl": "https://master.xinfin.network/",
     "truffle": {
         "mnemonic": "",
         "minCandidateCap": "10000000000000000000000000",
