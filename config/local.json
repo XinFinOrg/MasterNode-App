@@ -12,8 +12,8 @@
     "blockchain": {
         "rpc": "https://devnetrpc.apothem.network",
         "ws": "wss://devnetws.apothem.network/",
-        "internalRpc": "http://localhost:8545",
-        "internalWs": "ws://localhost:8555",
+        "internalRpc": "https://devnetrpc.apothem.network",
+        "internalWs": "wss://devnetws.apothem.network/",
         "networkId": 551,
         "epoch": 900,
         "blockTime": 2,
