@@ -10,8 +10,8 @@
         "https://swagger.apothem.network"
     ],
     "blockchain": {
-        "rpc": "https://devnetrpc.xinfin.network",
-        "ws": "wss://devnetws.xinfin.network/",
+        "rpc": "https://devnetrpc.apothem.network",
+        "ws": "wss://devnetws.apothem.network/",
         "internalRpc": "http://localhost:8545",
         "internalWs": "ws://localhost:8555",
         "networkId": 551,
