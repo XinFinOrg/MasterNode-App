@@ -4,13 +4,15 @@ const TerserPlugin = require('terser-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const commonConfig = require('./webpack.config.common')
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 
 const webpackConfig = merge(commonConfig, {
     mode: 'production',
     entry: {
         vendor: ['bignumber.js', 'vue', 'vue-router', 'vuex', 'xdc3']
     },
+    target: 'browserslist',
+    devtool: 'source-map',
     output: {
         path: path.resolve(__dirname, '../build'),
         publicPath: '/build/',
