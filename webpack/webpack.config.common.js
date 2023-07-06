@@ -15,6 +15,7 @@ const webpackConfig = {
     },
     module: {
         rules: [
+
             {
                 test: /\.m?js$/, // this will match both .mjs and .js files
                 exclude: /(node_modules|bower_components)/,
@@ -28,7 +29,7 @@ const webpackConfig = {
             {
                 enforce: 'pre',
                 test: [/\.js$/, /\.vue$/],
-                exclude: [/node_modules/],
+                // exclude: [/node_modules/],
                 loader: 'eslint-loader'
             },
             {
@@ -40,7 +41,7 @@ const webpackConfig = {
             },
             {
                 test: /\.scss$/,
-                exclude: [/node_modules/],
+                // exclude: [/node_modules/],
                 use: [
                     'vue-style-loader',
                     'css-loader',
@@ -65,7 +66,7 @@ const webpackConfig = {
             {
                 test: /\.vue$/,
                 loader: 'vue-loader',
-                exclude: /node_modules/,
+                // exclude: /node_modules/,
                 options: {
                     loaders: {
                         'scss': [
@@ -79,21 +80,21 @@ const webpackConfig = {
             },
             {
                 test: /\.js$/,
-                loader: 'babel-loader',
-                exclude: /node_modules/
+                loader: 'babel-loader'
+                // exclude: /node_modules/
             },
             {
                 test: /\.(png|jpg|gif|svg)$/,
                 loader: 'file-loader',
                 options: {
                     name: '[name].[ext]?[hash]'
-                },
-                exclude: /node_modules/
+                }
+                // exclude: /node_modules/
             },
             {
                 test: /\.(png|woff|woff2|eot|ttf|svg)$/,
-                loader: 'url-loader',
-                exclude: /node_modules/
+                loader: 'url-loader'
+                // exclude: /node_modules/
             }
         ]
     },
@@ -103,7 +104,7 @@ const webpackConfig = {
             'app': path.resolve('./app/app.js'),
             'style': path.resolve('./app/assets/scss/style.scss')
         },
-        extensions: ['*', '.js', '.vue', '.json']
+        extensions: ['.*', '.js', '.vue', '.json']
     },
     performance: {
         hints: false

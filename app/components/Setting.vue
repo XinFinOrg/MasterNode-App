@@ -51,6 +51,7 @@
                                         <option
                                             v-if="!isElectron"
                                             value="metamask">XDCPay</option>
+                                        <option value="connect-wallet">Connect Wallet</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
                                         <option
@@ -435,6 +436,7 @@
 import Web3 from 'xdc3'
 import BigNumber from 'bignumber.js'
 import { validationMixin } from 'vuelidate'
+import { WalletConnectModalAuth } from '@walletconnect/modal-auth-html'
 import axios from 'axios'
 import {
     required, minLength
@@ -632,6 +634,9 @@ export default {
             }
         },
         validate: function () {
+            if (this.provider === 'connect-wallet') {
+                this.save()
+            }
             if (this.provider === 'metamask' || this.provider === 'xinpay') {
                 this.save()
             }
@@ -688,9 +693,29 @@ export default {
             try {
                 let offset
                 switch (self.provider) {
+                case 'connect-wallet':
+                    const projectId = self.chainConfig['walletconnectProjectId']
+                    const modal = new WalletConnectModalAuth({
+                        modalOptions: {
+                            themeMode: 'dark'
+                        },
+                        projectId,
+                        metadata: {
+                            name: 'My Dapp',
+                            description: 'My Dapp description',
+                            url: 'https://my-dapp.com',
+                            icons: ['https://my-dapp.com/logo.png']
+                        }
+                    })
+                    const data = await modal.signIn({ statement: 'Sign In to My Dapp', chainId:'89', aud:window.location.href })
+                    self.address = data.address
+                    const provider = new Web3.providers.HttpProvider(self.networks.rpc)
+                    wjs = new Web3(provider)
+
+                    break
                 case 'metamask':
                     if (window.web3) {
-                        var p = window.web3.currentProvider
+                        const p = window.web3.currentProvider
                         wjs = new Web3(p)
                     }
                     break
@@ -737,7 +762,7 @@ export default {
 
                 if (self.address) {
                     self.$store.state.address = self.address.toLowerCase()
-                    if (self.provider === 'metamask' || self.provider === 'xinpay') {
+                    if (self.provider === 'metamask' || self.provider === 'xinpay' || self.provider === 'connect-wallet') {
                         store.set('address', self.address.toLowerCase())
                         store.set('network', self.provider)
                     }

@@ -8,6 +8,7 @@
   },
   "cors": ["https://swagger.xinfin.network"],
   "blockchain": {
+    "walletconnectProjectId":"434595f829f14424a64c1b45a0ab497d",
     "rpc": "https://rpc.xinfin.network",
     "ws": "wss://ws.xinfin.network/",
     "internalRpc": "https://erpc.xinfin.network",

@@ -83,6 +83,9 @@ Vue.prototype.getAccount = async function () {
     const wjs = Vue.prototype.web3
     let account
     switch (provider) {
+    case 'connect-wallet':
+        account = (await wjs.eth.getAccounts())[0]
+        break
     case 'metamask':
         // Request account access if needed - for metamask
         if (window.ethereum) {
@@ -324,6 +327,10 @@ Vue.prototype.detectNetwork = async function (provider) {
         const chainConfig = config.blockchain
         if (!wjs) {
             switch (provider) {
+            case 'connect-wallet':
+                let p = new Web3.providers.HttpProvider(config.rpc)
+                wjs = new Web3(p)
+                break
             case 'metamask':
                 if (window.ethereum) {
                     let p = window.ethereum
