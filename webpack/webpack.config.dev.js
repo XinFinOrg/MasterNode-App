@@ -20,9 +20,9 @@ const webpackConfig = merge(commonConfig, {
         },
         compress: true,
         historyApiFallback: true,
-        client: {
-            overlay: true
-        },
+        // client: {
+        //     overlay: true
+        // },
         proxy: {
             '/api/*': {
                 target: 'http://localhost:5001',

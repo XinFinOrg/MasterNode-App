@@ -50,7 +50,7 @@
                                         @change="onChangeSelect">
                                         <option
                                             v-if="!isElectron"
-                                            value="metamask">XDCPay</option>
+                                            value="xinpay">XDCPay</option>
                                         <option value="connect-wallet">Connect Wallet</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
@@ -461,7 +461,7 @@ export default {
             hdPath: "m/44'/551'/0'/0", // HD DerivationPath of hardware wallet
             hdWallets: {}, // list of addresses in hardware wallet
             config: {},
-            provider: 'metamask',
+            provider: 'xinpay',
             address: '',
             withdraws: [],
             wh: [],
@@ -717,6 +717,7 @@ export default {
                     if (window.web3) {
                         const p = window.web3.currentProvider
                         wjs = new Web3(p)
+                        console.log(p, wjs)
                     }
                     break
                 case 'xinpay':
