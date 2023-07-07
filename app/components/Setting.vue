@@ -50,7 +50,7 @@
                                         @change="onChangeSelect">
                                         <option
                                             v-if="!isElectron"
-                                            value="xinpay">XDCPay</option>
+                                            value="metamask">XDCPay</option>
                                         <option value="connect-wallet">Connect Wallet</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
@@ -436,7 +436,6 @@
 import Web3 from 'xdc3'
 import BigNumber from 'bignumber.js'
 import { validationMixin } from 'vuelidate'
-import { WalletConnectModalAuth } from '@walletconnect/modal-auth-html'
 import axios from 'axios'
 import {
     required, minLength
@@ -444,6 +443,7 @@ import {
 // import localhostUrl from '../../validators/localhostUrl.js'
 import VueQrcode from '@chenfengyuan/vue-qrcode'
 import store from 'store'
+import Helper from '../utils'
 // const HDWalletProvider = require('truffle-hdwallet-provider')
 const { HDWalletProvider } = require('../../helpers')
 const PrivateKeyProvider = require('truffle-privatekey-provider')
@@ -461,7 +461,7 @@ export default {
             hdPath: "m/44'/551'/0'/0", // HD DerivationPath of hardware wallet
             hdWallets: {}, // list of addresses in hardware wallet
             config: {},
-            provider: 'xinpay',
+            provider: 'metamask',
             address: '',
             withdraws: [],
             wh: [],
@@ -694,30 +694,23 @@ export default {
                 let offset
                 switch (self.provider) {
                 case 'connect-wallet':
-                    const projectId = self.chainConfig['walletconnectProjectId']
-                    const modal = new WalletConnectModalAuth({
-                        modalOptions: {
-                            themeMode: 'dark'
-                        },
-                        projectId,
-                        metadata: {
-                            name: 'My Dapp',
-                            description: 'My Dapp description',
-                            url: 'https://my-dapp.com',
-                            icons: ['https://my-dapp.com/logo.png']
-                        }
-                    })
-                    const data = await modal.signIn({ statement: 'Sign In to My Dapp', chainId:'89', aud:window.location.href })
-                    self.address = data.address
-                    const provider = new Web3.providers.HttpProvider(self.networks.rpc)
-                    wjs = new Web3(provider)
+                    let ethereumProvider = await this.walletConnectProvider(self.chainConfig)
+                    await ethereumProvider.connect()
+                    self.address = ethereumProvider.accounts[0]
+                    ethereumProvider.on('disconnect', (code, reason) => {
+                        store.clearAll()
+                        Object.assign(this.$store.state, Helper.getDefaultState())
 
+                        this.$router.go({
+                            path: '/'
+                        })
+                    })
+                    wjs = new Web3(ethereumProvider)
                     break
                 case 'metamask':
                     if (window.web3) {
                         const p = window.web3.currentProvider
                         wjs = new Web3(p)
-                        console.log(p, wjs)
                     }
                     break
                 case 'xinpay':

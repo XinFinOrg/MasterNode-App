@@ -2,6 +2,7 @@ var path = require('path')
 var appName = '[name].js'
 const commonConfig = require('./webpack.config.common')
 const { merge } = require('webpack-merge')
+const fs = require('fs')
 
 const webpackConfig = merge(commonConfig, {
     mode: 'development',
@@ -17,6 +18,10 @@ const webpackConfig = merge(commonConfig, {
     devServer: {
         static: {
             directory: path.join(__dirname, '../')
+        },
+        https: {
+            key: fs.readFileSync('./sslcert/server.key'),
+            cert: fs.readFileSync('./sslcert/server.crt')
         },
         compress: true,
         historyApiFallback: true,

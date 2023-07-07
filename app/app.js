@@ -9,6 +9,7 @@ import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 import 'vue2-dropzone/dist/vue2Dropzone.min.css'
 import Web3 from 'xdc3'
+import { EthereumProvider } from '@walletconnect/ethereum-provider'
 // import { default as contract } from 'truffle-contract'
 // import XDCValidatorArtifacts from '../build/contracts/XDCValidator.json'
 import Toasted from 'vue-toasted'
@@ -64,6 +65,27 @@ TrezorConnect.manifest({
 
 // Vue.prototype.XDCValidator = contract(XDCValidatorArtifacts)
 Vue.prototype.isElectron = !!(window && window.process && window.process.type)
+
+const ethereumProvider = async (showQrModal, blockchain) => {
+    const walletConnectProvider = await EthereumProvider.init({
+        projectId: blockchain.walletconnectProjectId,
+        showQrModal: showQrModal,
+        qrModalOptions: { themeMode: 'light' },
+        chains: [1],
+        methods: ['eth_sendTransaction', 'personal_sign'],
+        metadata: {
+            name: 'XDC Network Governance Dapp',
+            description: 'Providing a professional UI which allows coin-holders to stake for masternodes, decentralized governance and explore masternode performance statistics',
+            url: 'https://master.xinfin.network/',
+            icons: ['https://master.xinfin.network/app/assets/img/logo.svg']
+        }
+    })
+    return walletConnectProvider
+}
+// wallet-connect global provider
+Vue.prototype.walletConnectProvider = async (projectId) => {
+    return ethereumProvider(true, projectId)
+}
 
 Vue.prototype.setupProvider = async function (provider, wjs) {
     Vue.prototype.NetworkProvider = provider
@@ -322,14 +344,26 @@ const store = new Vuex.Store({
 })
 Vue.prototype.detectNetwork = async function (provider) {
     try {
-        let wjs = this.web3
         const config = localStorage.get('configMaster') || await getConfig()
+        let wjs = this.web3
+        const ewjs = await ethereumProvider(false, config.blockchain)
         const chainConfig = config.blockchain
         if (!wjs) {
             switch (provider) {
             case 'connect-wallet':
-                let p = new Web3.providers.HttpProvider(config.rpc)
-                wjs = new Web3(p)
+                if (ewjs.connected) {
+                    ewjs.on('disconnect', (code, reason) => {
+                        console.log('Disconnected!')
+                        localStorage.clearAll()
+                        Object.assign(store.state, Helper.getDefaultState())
+                        router.go({
+                            path: '/'
+                        })
+                    })
+
+                    let p = ewjs
+                    wjs = new Web3(p)
+                }
                 break
             case 'metamask':
                 if (window.ethereum) {
