@@ -17,6 +17,7 @@
     "dev": "npm run crawl-dev & npm run nodemon & cross-env NODE_ENV=development webpack-dev-server --hot --host 0.0.0.0 --port 5000",
     "dev-https": "npm run crawl-dev & npm run nodemon & cross-env NODE_ENV=development webpack-dev-server --https --key ./sslcert/server.key --cert ./sslcert/server.crt --hot --host 0.0.0.0 --port 5000",
     "build": "cross-env NODE_ENV=production webpack --progress",
+    "server-build": "cross-env NODE_ENV=production webpack --progress & npm run nodemon",
     "abis": "node ./abis.js",
     "coverage": "./node_modules/.bin/solidity-coverage",
     "electron:start": "electron .",
