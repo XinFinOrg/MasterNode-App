@@ -72,7 +72,11 @@ const ethereumProvider = async (showQrModal, blockchain) => {
         showQrModal: showQrModal,
         qrModalOptions: { themeMode: 'light' },
         chains: [1],
+        optionalChains:[50],
         methods: ['eth_sendTransaction', 'personal_sign'],
+        rpcMap:{
+            [blockchain.networkId]:blockchain.rpc
+        },
         metadata: {
             name: 'XDC Network Governance Dapp',
             description: 'Providing a professional UI which allows coin-holders to stake for masternodes, decentralized governance and explore masternode performance statistics',
