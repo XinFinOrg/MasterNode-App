@@ -76,7 +76,7 @@ const ethereumProvider = async (showQrModal, blockchain) => {
         methods: ['eth_sendTransaction', 'personal_sign'],
         rpcMap:{
             [blockchain.networkId]:blockchain.rpc,
-            51 :'https://rpc.apothem.network'
+            51 :'https://rpc.apothem.network/'
         },
         metadata: {
             name: 'XDC Network Governance Dapp',
