@@ -296,11 +296,20 @@ async function updateSignerPenAndStatus () {
                 'params': [c.candidate.toLowerCase(), 'latest'],
                 'id': config.get('blockchain.networkId')
             }
-            const response = await axios.post(config.get('blockchain.rpc'), data)
+            let response
+            try {
+                await sleep(2000)
+                response = await axios.post(config.get('blockchain.rpc'), data)
+            } catch (err) {
+                logger.error('updateSignerAndPen axois post %s', err)
+                await sleep(5000)
+                response = await axios.post(config.get('blockchain.internalRpc'), data)
+            }
             if (response.data) {
                 const result = (response.data.result || {}).status
                 switch (result) {
                 case 'MASTERNODE':
+                    logger.info('Update candidate %s MASTERNODE at blockNumber %s', c.candidate, String(blk.number))
                     signers.push(c.candidate)
                     await db.Candidate.findOneAndUpdate({
                         smartContractAddress: config.get('blockchain.validatorAddress'),
