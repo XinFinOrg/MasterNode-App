@@ -28,7 +28,8 @@ import localStorage from 'store'
 // On Ubuntu/Debian: sudo apt-get install build-essential libudev-dev
 // import Transport from '@ledgerhq/hw-transport-node-hid'
 
-import Transport from '@ledgerhq/hw-transport-u2f' // for browser
+// import Transport from '@ledgerhq/hw-transport-u2f' // for browser
+import TransportWebUSB from '@ledgerhq/hw-transport-webusb'
 import Eth from '@ledgerhq/hw-app-eth'
 import TrezorConnect from 'trezor-connect'
 import Transaction from 'ethereumjs-tx'
@@ -140,7 +141,8 @@ Vue.prototype.getAccount = async function () {
     case 'ledger':
         try {
             if (!Vue.prototype.appEth) {
-                let transport = await new Transport()
+                // let transport = await new Transport()
+                let transport = await TransportWebUSB.create()
                 Vue.prototype.appEth = await new Eth(transport)
             }
             let ethAppConfig = await Vue.prototype.appEth.getAppConfiguration()
@@ -177,14 +179,15 @@ Vue.prototype.getAccount = async function () {
 }
 
 Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
-    let u2fSupported = await Transport.isSupported()
+    // let u2fSupported = await Transport.isSupported()
+    let u2fSupported = await TransportWebUSB.isSupported()
     if (!u2fSupported) {
         throw new Error(`U2F not supported in this browser. 
                 Please try using Google Chrome with a secure (SSL / HTTPS) connection!`)
     }
     await Vue.prototype.detectNetwork('ledger')
     if (!Vue.prototype.appEth) {
-        let transport = await Transport.create()
+        let transport = await TransportWebUSB.create()
         Vue.prototype.appEth = await new Eth(transport)
     }
     const payload = Vue.prototype.ledgerPayload
@@ -221,7 +224,7 @@ Vue.prototype.unlockLedger = async () => {
     try {
         if (!Vue.prototype.appEth) {
             // let transport = await Transport.create()
-            let transport = await Transport.create()
+            let transport = await TransportWebUSB.create()
             Vue.prototype.appEth = await new Eth(transport)
         }
         const path = localStorage.get('hdDerivationPath')

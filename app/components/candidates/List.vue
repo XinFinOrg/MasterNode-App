@@ -10,7 +10,7 @@
                     <b-card class="XDC-card">
                         <h6 class="XDC-card__title">MasterNode / Total Nodes</h6>
                         <p class="XDC-card__text">
-                            {{ activeCandidates }}/{{ (toXDCNumber(chainConfig.XDCStakeAmount/10000000)).toFixed(0) }}
+                            {{ activeCandidates }}/{{ activeCandidates+totalProposedNodes }}
                         </p>
                     </b-card>
                 </div>
@@ -99,7 +99,7 @@
                         slot-scope="data">
                         <router-link
                             :to="'/candidate/' + data.item.address">
-                            {{ truncate(data.item.address, 18) }}
+                            {{ data.item.address }}
                         </router-link>
                     </template>
 
@@ -184,7 +184,7 @@ export default {
         return {
             chainConfig: {},
             fields: [
-                { key: 'rank', label: 'Rank' },
+                // { key: 'rank', label: 'Rank' },
                 { key: 'address', label: 'Address', sortable: false },
                 { key: 'name', label: 'Name', sortable: false },
                 { key: 'capacity', label: 'Capacity', sortable: true },

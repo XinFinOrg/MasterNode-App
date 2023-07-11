@@ -38,8 +38,10 @@
   "homepage": "https://github.com/xinfinorg/masternodeapp#readme",
   "dependencies": {
     "@chenfengyuan/vue-qrcode": "^1.0.0",
-    "@ledgerhq/hw-app-eth": "4.24.0",
+    "@ledgerhq/cryptoassets": "^9.8.0",
+    "@ledgerhq/hw-app-eth": "^6.24.1",
     "@ledgerhq/hw-transport-u2f": "4.24.0",
+    "@ledgerhq/hw-transport-webusb": "^6.24.1",
     "@truffle/hdwallet-provider": "^1.2.0",
     "@walletconnect/ethereum-provider": "^2.9.0",
     "@walletconnect/modal": "^2.5.9",
