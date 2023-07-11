@@ -1,16 +1,19 @@
 var path = require('path')
 var webpack = require('webpack')
+const { DefinePlugin } = require('webpack')
 const TerserPlugin = require('terser-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const commonConfig = require('./webpack.config.common')
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 
 const webpackConfig = merge(commonConfig, {
     mode: 'production',
     entry: {
         vendor: ['bignumber.js', 'vue', 'vue-router', 'vuex', 'xdc3']
     },
+    target: 'browserslist',
+    devtool: 'source-map',
     output: {
         path: path.resolve(__dirname, '../build'),
         publicPath: '/build/',
@@ -23,17 +26,13 @@ const webpackConfig = merge(commonConfig, {
         splitChunks: {
             chunks: 'all',
             minSize: 30000,
-            maxSize: 0,
             minChunks: 1,
             maxAsyncRequests: 5,
             maxInitialRequests: 3,
-            automaticNameDelimiter: '~',
-            name: true,
             cacheGroups: {
                 vendor: {
-                    chunks: 'initial',
-                    name: 'vendor',
-                    test: './node_modules/',
+                    name: 'node-vendor',
+                    test: /[\\/]node_modules[\\/]/,
                     enforce: true
                 },
                 default: {
@@ -43,12 +42,12 @@ const webpackConfig = merge(commonConfig, {
                 }
             }
         },
-        runtimeChunk: true
+        runtimeChunk: 'single'
     },
     plugins: [
-        new webpack.DefinePlugin({
+        new DefinePlugin({
             'process.env': {
-                NODE_ENV: '"production"'
+                NODE_ENV: JSON.stringify('production')
             }
         }),
         new webpack.LoaderOptionsPlugin({
@@ -59,7 +58,7 @@ const webpackConfig = merge(commonConfig, {
                         sourceMap: true,
                         loops: false,
                         compress: {
-                            warning: false
+                            warnings: false
                         }
                     }
                 })
@@ -72,7 +71,7 @@ const webpackConfig = merge(commonConfig, {
             filename: 'index.html',
             template: 'index-prod.html',
             inject: true,
-            chunksSortMode: 'dependency'
+            chunksSortMode: 'auto'
         })
     ]
 })

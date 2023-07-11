@@ -10,6 +10,7 @@
         "https://swagger.apothem.network"
     ],
     "blockchain": {
+        "walletconnectProjectId":"0000000000000000000000000000000000000",
         "rpc": "https://mnrpc.xinfin.network",
         "ws": "wss://mnws.xinfin.network/",
         "internalRpc": "http://localhost:8989",
