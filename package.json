@@ -48,7 +48,7 @@
     "@walletconnect/universal-provider": "^2.9.0",
     "@walletconnect/web3-provider": "^1.8.0",
     "apicache": "^1.4.0",
-    "axios": "^0.19.0",
+    "axios": "^0.21.2",
     "bignumber.js": "^7.2.1",
     "bip39": "^2.5.0",
     "body-parser": "^1.18.2",
