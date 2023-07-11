@@ -99,7 +99,7 @@
     "cross-env": "^5.0.5",
     "css-loader": "^2.1.1",
     "electron": "^2.0.8",
-    "electron-builder": "^20.28.4",
+    "electron-builder": "^24.4.0",
     "electron-packager": "^13.1.0",
     "eslint": "^4.19.1",
     "eslint-config-standard": "^11.0.0",
