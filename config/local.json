@@ -10,10 +10,10 @@
         "https://swagger.apothem.network"
     ],
     "blockchain": {
-        "rpc": "https://erpc.xdcrpc.com",
-        "ws": "wss://ws.xdcrpc.com/",
-        "internalRpc": "https://rpc.xdcrpc.com",
-        "internalWs": "wss://ews.xdcrpc.com/",
+        "rpc": "https://mnrpc.xinfin.network",
+        "ws": "wss://mnws.xinfin.network/",
+        "internalRpc": "http://localhost:8989",
+        "internalWs": "ws://localhost:8888",
         "networkId": 50,
         "epoch": 900,
         "blockTime": 2,
