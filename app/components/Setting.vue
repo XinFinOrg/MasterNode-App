@@ -51,7 +51,7 @@
                                         <option
                                             v-if="!isElectron"
                                             value="metamask">XDCPay</option>
-                                        <option value="connect-wallet">Connect Wallet</option>
+                                        <option value="connect-wallet">WalletConnect v2</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
                                         <option
