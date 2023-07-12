@@ -320,7 +320,7 @@ async function updateSignerPenAndStatus () {
 
         // loop and get status
         await Promise.all(candidatesWithStatus.map(async ({ candidateStatus, candidate }) => {
-            const result = candidateStatus.result
+            const result = candidateStatus?.result?.status
             switch (result) {
             case 'MASTERNODE':
                 signers.push(candidate.candidate)

@@ -9,3 +9,6 @@ node_modules
 coverage
 coverage.json
 .DS_Store
+!build/contracts
+build
+pakckage-lock.json
