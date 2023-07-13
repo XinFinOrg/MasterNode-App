@@ -9,6 +9,7 @@ import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 import 'vue2-dropzone/dist/vue2Dropzone.min.css'
 import Web3 from 'xdc3'
+import { EthereumProvider } from '@walletconnect/ethereum-provider'
 // import { default as contract } from 'truffle-contract'
 // import XDCValidatorArtifacts from '../build/contracts/XDCValidator.json'
 import Toasted from 'vue-toasted'
@@ -27,7 +28,8 @@ import localStorage from 'store'
 // On Ubuntu/Debian: sudo apt-get install build-essential libudev-dev
 // import Transport from '@ledgerhq/hw-transport-node-hid'
 
-import Transport from '@ledgerhq/hw-transport-u2f' // for browser
+// import Transport from '@ledgerhq/hw-transport-u2f' // for browser
+import TransportWebUSB from '@ledgerhq/hw-transport-webusb'
 import Eth from '@ledgerhq/hw-app-eth'
 import TrezorConnect from 'trezor-connect'
 import Transaction from 'ethereumjs-tx'
@@ -65,6 +67,32 @@ TrezorConnect.manifest({
 // Vue.prototype.XDCValidator = contract(XDCValidatorArtifacts)
 Vue.prototype.isElectron = !!(window && window.process && window.process.type)
 
+const ethereumProvider = async (showQrModal, blockchain) => {
+    const walletConnectProvider = await EthereumProvider.init({
+        projectId: blockchain.walletconnectProjectId,
+        showQrModal: showQrModal,
+        qrModalOptions: { themeMode: 'light' },
+        chains: [50],
+        optionalChains:[1, 51],
+        methods: ['eth_sendTransaction', 'personal_sign'],
+        rpcMap:{
+            [blockchain.networkId]:blockchain.rpc,
+            51 :'https://rpc.apothem.network/'
+        },
+        metadata: {
+            name: 'XDC Network Governance Dapp',
+            description: 'Providing a professional UI which allows coin-holders to stake for masternodes, decentralized governance and explore masternode performance statistics',
+            url: 'https://master.xinfin.network/',
+            icons: ['https://master.xinfin.network/app/assets/img/logo.svg']
+        }
+    })
+    return walletConnectProvider
+}
+// wallet-connect global provider
+Vue.prototype.walletConnectProvider = async (projectId) => {
+    return ethereumProvider(true, projectId)
+}
+
 Vue.prototype.setupProvider = async function (provider, wjs) {
     Vue.prototype.NetworkProvider = provider
     if (wjs instanceof Web3) {
@@ -83,6 +111,9 @@ Vue.prototype.getAccount = async function () {
     const wjs = Vue.prototype.web3
     let account
     switch (provider) {
+    case 'connect-wallet':
+        account = (await wjs.eth.getAccounts())[0]
+        break
     case 'metamask':
         // Request account access if needed - for metamask
         if (window.ethereum) {
@@ -110,7 +141,8 @@ Vue.prototype.getAccount = async function () {
     case 'ledger':
         try {
             if (!Vue.prototype.appEth) {
-                let transport = await new Transport()
+                // let transport = await new Transport()
+                let transport = await TransportWebUSB.create()
                 Vue.prototype.appEth = await new Eth(transport)
             }
             let ethAppConfig = await Vue.prototype.appEth.getAppConfiguration()
@@ -147,14 +179,15 @@ Vue.prototype.getAccount = async function () {
 }
 
 Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
-    let u2fSupported = await Transport.isSupported()
+    // let u2fSupported = await Transport.isSupported()
+    let u2fSupported = await TransportWebUSB.isSupported()
     if (!u2fSupported) {
         throw new Error(`U2F not supported in this browser. 
                 Please try using Google Chrome with a secure (SSL / HTTPS) connection!`)
     }
     await Vue.prototype.detectNetwork('ledger')
     if (!Vue.prototype.appEth) {
-        let transport = await Transport.create()
+        let transport = await TransportWebUSB.create()
         Vue.prototype.appEth = await new Eth(transport)
     }
     const payload = Vue.prototype.ledgerPayload
@@ -190,7 +223,8 @@ Vue.prototype.unlockTrezor = async () => {
 Vue.prototype.unlockLedger = async () => {
     try {
         if (!Vue.prototype.appEth) {
-            let transport = await Transport.create()
+            // let transport = await Transport.create()
+            let transport = await TransportWebUSB.create()
             Vue.prototype.appEth = await new Eth(transport)
         }
         const path = localStorage.get('hdDerivationPath')
@@ -319,11 +353,27 @@ const store = new Vuex.Store({
 })
 Vue.prototype.detectNetwork = async function (provider) {
     try {
-        let wjs = this.web3
         const config = localStorage.get('configMaster') || await getConfig()
+        let wjs = this.web3
+        const ewjs = await ethereumProvider(false, config.blockchain)
         const chainConfig = config.blockchain
         if (!wjs) {
             switch (provider) {
+            case 'connect-wallet':
+                if (ewjs.connected) {
+                    ewjs.on('disconnect', (code, reason) => {
+                        console.log('Disconnected!')
+                        localStorage.clearAll()
+                        Object.assign(store.state, Helper.getDefaultState())
+                        router.go({
+                            path: '/'
+                        })
+                    })
+
+                    let p = ewjs
+                    wjs = new Web3(p)
+                }
+                break
             case 'metamask':
                 if (window.ethereum) {
                     let p = window.ethereum

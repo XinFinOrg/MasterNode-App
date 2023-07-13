@@ -51,6 +51,7 @@
                                         <option
                                             v-if="!isElectron"
                                             value="metamask">XDCPay</option>
+                                        <option value="connect-wallet">WalletConnect v2</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
                                         <option
@@ -442,6 +443,7 @@ import {
 // import localhostUrl from '../../validators/localhostUrl.js'
 import VueQrcode from '@chenfengyuan/vue-qrcode'
 import store from 'store'
+import Helper from '../utils'
 // const HDWalletProvider = require('truffle-hdwallet-provider')
 const { HDWalletProvider } = require('../../helpers')
 const PrivateKeyProvider = require('truffle-privatekey-provider')
@@ -632,6 +634,9 @@ export default {
             }
         },
         validate: function () {
+            if (this.provider === 'connect-wallet') {
+                this.save()
+            }
             if (this.provider === 'metamask' || this.provider === 'xinpay') {
                 this.save()
             }
@@ -688,9 +693,23 @@ export default {
             try {
                 let offset
                 switch (self.provider) {
+                case 'connect-wallet':
+                    let ethereumProvider = await this.walletConnectProvider(self.chainConfig)
+                    await ethereumProvider.connect()
+                    self.address = ethereumProvider.accounts[0]
+                    ethereumProvider.on('disconnect', (code, reason) => {
+                        store.clearAll()
+                        Object.assign(this.$store.state, Helper.getDefaultState())
+
+                        this.$router.go({
+                            path: '/'
+                        })
+                    })
+                    wjs = new Web3(ethereumProvider)
+                    break
                 case 'metamask':
                     if (window.web3) {
-                        var p = window.web3.currentProvider
+                        const p = window.web3.currentProvider
                         wjs = new Web3(p)
                     }
                     break
@@ -737,7 +756,7 @@ export default {
 
                 if (self.address) {
                     self.$store.state.address = self.address.toLowerCase()
-                    if (self.provider === 'metamask' || self.provider === 'xinpay') {
+                    if (self.provider === 'metamask' || self.provider === 'xinpay' || self.provider === 'connect-wallet') {
                         store.set('address', self.address.toLowerCase())
                         store.set('network', self.provider)
                     }

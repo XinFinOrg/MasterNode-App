@@ -10,7 +10,7 @@
                     <b-card class="XDC-card">
                         <h6 class="XDC-card__title">MasterNode / Total Nodes</h6>
                         <p class="XDC-card__text">
-                            {{ activeCandidates }}/{{ (toXDCNumber(chainConfig.XDCStakeAmount/10000000)).toFixed(0) }}
+                            {{ activeCandidates }}/{{ activeCandidates+totalProposedNodes }}
                         </p>
                     </b-card>
                 </div>
@@ -18,7 +18,8 @@
                     <b-card class="XDC-card XDC-card">
                         <h6 class="XDC-card__title">Staked Amount</h6>
                         <p class="XDC-card__text">
-                            {{ formatCurrencySymbol(formatBigNumber(toXDCNumber(chainConfig.XDCStakeAmount),2)) }}</p>
+                            {{ formatCurrencySymbol(formatBigNumber(toXDCNumber(chainConfig.XDCStakeAmount),2)) }}
+                        </p>
                     </b-card>
                 </div>
                 <div class="col-md-6 col-lg-4">
@@ -183,7 +184,7 @@ export default {
         return {
             chainConfig: {},
             fields: [
-                { key: 'rank', label: 'Rank' },
+                // { key: 'rank', label: 'Rank' },
                 { key: 'address', label: 'Address', sortable: false },
                 { key: 'name', label: 'Name', sortable: false },
                 { key: 'capacity', label: 'Capacity', sortable: true },
@@ -230,6 +231,7 @@ export default {
         const config = store.get('configMaster') || await self.appConfig()
         self.chainConfig = config.blockchain
         self.currentBlock = self.chainConfig.blockNumber
+        console.log(self.chainConfig.XDCStakeAmount, 'chainConfig.XDCStakeAmountchainConfig.XDCStakeAmountchainConfig.XDCStakeAmount')
 
         try {
             if (self.isReady || window.web3) {

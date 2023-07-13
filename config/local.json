@@ -10,10 +10,11 @@
         "https://swagger.apothem.network"
     ],
     "blockchain": {
-        "rpc": "https://devnetrpc.apothem.network",
-        "ws": "wss://devnetws.apothem.network/",
-        "internalRpc": "https://devnetrpc.apothem.network",
-        "internalWs": "wss://devnetws.apothem.network/",
+        "walletconnectProjectId":"0000000000000000000000000000000000000",
+        "rpc": "https://devneterpc.apothem.network",
+        "ws": "ws://194.233.77.19:8555",
+        "internalRpc": "https://devneterpc.apothem.network",
+        "internalWs": "ws://194.233.77.19:8555",
         "networkId": 551,
         "epoch": 900,
         "blockTime": 2,
@@ -28,7 +29,8 @@
         "randomizeAddress": "0x0000000000000000000000000000000000000090"
     },
     "db": {
-        "uri": "mongodb://localhost:27017/gDevNet"
+        "uri": "mongodb://localhost:27017/mnApp"
+
     },
     "explorerUrl": "https://devnet.blocksscan.io",
     "XDCscanUrl": "https://devnet.blocksscan.io",

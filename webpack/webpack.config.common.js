@@ -1,6 +1,7 @@
 var path = require('path')
 const globImporter = require('node-sass-glob-importer')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin')
 
 const webpackConfig = {
     entry: {
@@ -14,6 +15,17 @@ const webpackConfig = {
     },
     module: {
         rules: [
+
+            {
+                test: /\.m?js$/, // this will match both .mjs and .js files
+                exclude: /(node_modules|bower_components)/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env']
+                    }
+                }
+            },
             {
                 enforce: 'pre',
                 test: [/\.js$/, /\.vue$/],
@@ -92,14 +104,14 @@ const webpackConfig = {
             'app': path.resolve('./app/app.js'),
             'style': path.resolve('./app/assets/scss/style.scss')
         },
-        extensions: ['*', '.js', '.vue', '.json']
+        extensions: ['.*', '.js', '.vue', '.json']
     },
     performance: {
         hints: false
     },
-    devtool: '#eval-source-map',
     plugins: [
-        new VueLoaderPlugin()
+        new VueLoaderPlugin(),
+        new NodePolyfillPlugin()
     ]
 }
 

@@ -273,6 +273,25 @@ async function getCurrentCandidates () {
     }
 }
 
+async function getChunkCandidateStatus (candidates) {
+    try {
+        const candatesStatus = await Promise.all(candidates.map(async (c) => {
+            const data = {
+                'jsonrpc': '2.0',
+                'method': 'eth_getCandidateStatus',
+                'params': [c.candidate.toLowerCase(), 'latest'],
+                'id': config.get('blockchain.networkId')
+            }
+            const response = await axios.post(config.get('blockchain.rpc'), data)
+            return { candidateStatus:response.data, candidate:c }
+        }))
+
+        return candatesStatus
+    } catch (e) {
+        logger.error('getChunkCandidate %s', e)
+    }
+}
+
 async function updateSignerPenAndStatus () {
     try {
         const latestBlockNumber = await web3.eth.getBlockNumber()
@@ -288,90 +307,92 @@ async function updateSignerPenAndStatus () {
                 $ne: 'RESIGNED'
             }
         })
+
+        let candidatesWithStatus = []
+        let startIndex = 0
+        const getItems = 40
+        while (startIndex < candidates.length) {
+            const candidateStatus = await getChunkCandidateStatus(candidates.slice(startIndex, getItems + startIndex)) || []
+            candidatesWithStatus = [...candidatesWithStatus, ...candidateStatus]
+            console.log(`got ${startIndex}, ${getItems + startIndex}`)
+            startIndex += getItems
+        }
+
         // loop and get status
-        await Promise.all(candidates.map(async (c) => {
-            const data = {
-                'jsonrpc': '2.0',
-                'method': 'eth_getCandidateStatus',
-                'params': [c.candidate.toLowerCase(), 'latest'],
-                'id': config.get('blockchain.networkId')
-            }
-            const response = await axios.post(config.get('blockchain.rpc'), data)
-            if (response.data) {
-                const result = (response.data.result || {}).status
-                switch (result) {
-                case 'MASTERNODE':
-                    signers.push(c.candidate)
-                    await db.Candidate.findOneAndUpdate({
-                        smartContractAddress: config.get('blockchain.validatorAddress'),
-                        candidate: c.candidate.toLowerCase()
-                    }, {
-                        $set: {
-                            status: 'MASTERNODE'
-                        }
-                    }, { upsert: true })
-                    await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
-                        epoch: currentEpoch,
-                        candidate: c.candidate,
-                        status: 'MASTERNODE',
-                        epochCreatedAt: moment.unix(blk.timestamp).utc()
-                    }, { upsert: true })
-                    break
-                case 'SLASHED':
-                    logger.info('Update candidate %s slashed at blockNumber %s', c.candidate, String(blk.number))
-                    // fireNotification
-                    if (result.toLowerCase() !== c.status.toLowerCase()) {
-                        // get all voters who have capacity > 0
-                        const voters = await db.Voter.find({
-                            candidate: c.candidate,
-                            smartContractAddress: config.get('blockchain.validatorAddress'),
-                            capacityNumber: { $gt: 0 }
-                        })
-                        if (voters && voters.length > 0) {
-                            await Promise.all(voters.map(async (v) => {
-                                await fireNotification(v.voter, c.candidate, c.name, 'Slash', latestBlockNumber)
-                            }))
-                        }
+        await Promise.all(candidatesWithStatus.map(async ({ candidateStatus, candidate }) => {
+            const result = candidateStatus?.result?.status
+            switch (result) {
+            case 'MASTERNODE':
+                signers.push(candidate.candidate)
+                await db.Candidate.findOneAndUpdate({
+                    smartContractAddress: config.get('blockchain.validatorAddress'),
+                    candidate: candidate.candidate.toLowerCase()
+                }, {
+                    $set: {
+                        status: 'MASTERNODE'
                     }
-
-                    db.Candidate.findOneAndUpdate({
+                }, { upsert: true })
+                await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: candidate.candidate }, {
+                    epoch: currentEpoch,
+                    candidate: candidate.candidate,
+                    status: 'MASTERNODE',
+                    epochCreatedAt: moment.unix(blk.timestamp).utc()
+                }, { upsert: true })
+                break
+            case 'SLASHED':
+                logger.info('Update candidate %s slashed at blockNumber %s', candidate.candidate, String(blk.number))
+                // fireNotification
+                if (result.toLowerCase() !== candidate.status.toLowerCase()) {
+                    // get all voters who have capacity > 0
+                    const voters = await db.Voter.find({
+                        candidate: candidate.candidate,
                         smartContractAddress: config.get('blockchain.validatorAddress'),
-                        candidate: c.candidate.toLowerCase()
-                    }, {
-                        $set: {
-                            status: 'SLASHED'
-                        }
-                    }, { upsert: true }).then(() => true)
-                        .catch(error => console.log(error))
-
-                    db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
-                        epoch: currentEpoch,
-                        candidate: c.candidate,
-                        status: 'SLASHED',
-                        epochCreatedAt: moment.unix(blk.timestamp).utc()
-                    }, { upsert: true }).then(() => true)
-                        .catch(error => console.log(error))
-                    penalties.push(c.candidate)
-                    break
-                case 'PROPOSED':
-                    await db.Candidate.findOneAndUpdate({
-                        smartContractAddress: config.get('blockchain.validatorAddress'),
-                        candidate: c.candidate.toLowerCase()
-                    }, {
-                        $set: {
-                            status: 'STANDBY'
-                        }
-                    }, { upsert: true })
-                    await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: c.candidate }, {
-                        epoch: currentEpoch,
-                        candidate: c.candidate,
-                        status: 'STANDBY',
-                        epochCreatedAt: moment.unix(blk.timestamp).utc()
-                    }, { upsert: true })
-                    break
-                default:
-                    break
+                        capacityNumber: { $gt: 0 }
+                    })
+                    if (voters && voters.length > 0) {
+                        await Promise.all(voters.map(async (v) => {
+                            await fireNotification(v.voter, candidate.candidate, candidate.name, 'Slash', latestBlockNumber)
+                        }))
+                    }
                 }
+
+                db.Candidate.findOneAndUpdate({
+                    smartContractAddress: config.get('blockchain.validatorAddress'),
+                    candidate: candidate.candidate.toLowerCase()
+                }, {
+                    $set: {
+                        status: 'SLASHED'
+                    }
+                }, { upsert: true }).then(() => true)
+                    .catch(error => console.log(error))
+
+                db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: candidate.candidate }, {
+                    epoch: currentEpoch,
+                    candidate: candidate.candidate,
+                    status: 'SLASHED',
+                    epochCreatedAt: moment.unix(blk.timestamp).utc()
+                }, { upsert: true }).then(() => true)
+                    .catch(error => console.log(error))
+                penalties.push(candidate.candidate)
+                break
+            case 'PROPOSED':
+                await db.Candidate.findOneAndUpdate({
+                    smartContractAddress: config.get('blockchain.validatorAddress'),
+                    candidate: candidate.candidate.toLowerCase()
+                }, {
+                    $set: {
+                        status: 'STANDBY'
+                    }
+                }, { upsert: true })
+                await db.Status.findOneAndUpdate({ epoch: currentEpoch, candidate: candidate.candidate }, {
+                    epoch: currentEpoch,
+                    candidate: candidate.candidate,
+                    status: 'STANDBY',
+                    epochCreatedAt: moment.unix(blk.timestamp).utc()
+                }, { upsert: true })
+                break
+            default:
+                break
             }
         }))
         await db.Signer.findOneAndUpdate({ blockNumber: blk.number }, {
@@ -380,7 +401,7 @@ async function updateSignerPenAndStatus () {
             signers: signers
         }, { upsert: true })
 
-        await db.Penalty.update({ epoch: currentEpoch }, {
+        await db.Penalty.updateMany({ epoch: currentEpoch }, {
             networkId: config.get('blockchain.networkId'),
             blockNumber: blk.number,
             epoch: currentEpoch,

@@ -1,10 +1,13 @@
 var path = require('path')
 var appName = '[name].js'
 const commonConfig = require('./webpack.config.common')
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
+const fs = require('fs')
 
 const webpackConfig = merge(commonConfig, {
     mode: 'development',
+    devtool: 'inline-source-map',
+    target: 'web',
     output: {
         path: path.resolve(__dirname, '../build'),
         publicPath: '/build/',
@@ -13,14 +16,23 @@ const webpackConfig = merge(commonConfig, {
         // jsonpFunction: 'pluginWebpack'
     },
     devServer: {
-        disableHostCheck: true,
+        static: {
+            directory: path.join(__dirname, '../')
+        },
+        https: {
+            key: fs.readFileSync('./sslcert/server.key'),
+            cert: fs.readFileSync('./sslcert/server.crt')
+        },
         compress: true,
         historyApiFallback: true,
-        noInfo: true,
-        overlay: true,
+        // client: {
+        //     overlay: true
+        // },
         proxy: {
-            '/api/*': 'http://localhost:5001',
-            secure: false
+            '/api/*': {
+                target: 'http://localhost:5001',
+                secure: false
+            }
         }
     }
 })
