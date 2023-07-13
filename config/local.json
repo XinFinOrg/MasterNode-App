@@ -11,11 +11,11 @@
     ],
     "blockchain": {
         "walletconnectProjectId":"0000000000000000000000000000000000000",
-        "rpc": "https://mnrpc.xinfin.network",
-        "ws": "wss://mnws.xinfin.network/",
-        "internalRpc": "http://localhost:8989",
-        "internalWs": "ws://localhost:8888",
-        "networkId": 50,
+        "rpc": "https://devneterpc.apothem.network",
+        "ws": "ws://194.233.77.19:8555",
+        "internalRpc": "https://devneterpc.apothem.network",
+        "internalWs": "ws://194.233.77.19:8555",
+        "networkId": 551,
         "epoch": 900,
         "blockTime": 2,
         "reward": 5000,
@@ -30,10 +30,11 @@
     },
     "db": {
         "uri": "mongodb://localhost:27017/mnApp"
+
     },
-    "explorerUrl": "https://xdc.blocksscan.io",
-    "XDCscanUrl": "https://xdc.blocksscan.io",
-    "baseUrl": "https://master.xinfin.network/",
+    "explorerUrl": "https://devnet.blocksscan.io",
+    "XDCscanUrl": "https://devnet.blocksscan.io",
+    "baseUrl": "https://devnetmn.xinfin.network/",
     "truffle": {
         "mnemonic": "",
         "minCandidateCap": "10000000000000000000000000",
@@ -43,7 +44,7 @@
         "voterWithdrawDelay": 100,
         "epochNumber": 900
     },
-    "GA": "UA-124426627-2",
+    "GA": "UA-134426627-2",
     "twitter": {
         "consumer_key": "twittter-consumer-api-key",
         "consumer_secret": "twittter-consumer-api-secret-key",
