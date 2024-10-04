@@ -5,6 +5,8 @@ const mongoose = require('mongoose')
 const db = {}
 const config = require('config')
 
+console.log((config.get('db.uri')))
+
 mongoose.Promise = global.Promise
 mongoose.set('useCreateIndex', true)
 mongoose.connect(config.get('db.uri'), {
