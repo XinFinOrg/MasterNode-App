@@ -166,15 +166,17 @@ async function updateCandidateInfo (candidate) {
         let capacity = 10000000000000000000000000
         let owner = (await validator.methods.getCandidateOwner(candidate).call() || '').toLowerCase()
         let status = await validator.methods.isCandidate(candidate).call()
-        if (candidate.substring(0, 2) === '0x') {
+
+        /* if (candidate.substring(0, 2) === '0x') {
             candidate = 'xdc' + candidate.substring(2)
         }
         if (owner.substring(0, 2) === '0x') {
             owner = 'xdc' + owner.substring(2)
-        }
+        } */
+
         let result
         // logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
-        if (candidate !== 'xdc0000000000000000000000000000000000000000') {
+        if (candidate !== '0x0000000000000000000000000000000000000000') {
             // check current status
             const candateInDB = await db.Candidate.findOne({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
@@ -318,8 +320,46 @@ async function updateSignerPenAndStatus () {
             startIndex += getItems
         }
 
-        // loop and get status
-        await Promise.all(candidatesWithStatus.map(async ({ candidateStatus, candidate }) => {
+        const data = {
+            'jsonrpc': '2.0',
+            'method': 'XDPoS_getMasternodesByNumber',
+            'params': [],
+            'id': config.get('blockchain.networkId')
+        }
+
+        const candidateAddressData = await axios.post(config.get('blockchain.rpc'), data)
+
+        const finalList = candidatesWithStatus.map((candidate) => {
+            const masterNodes = candidateAddressData.data.result.Masternodes
+            const standByNodes = candidateAddressData.data.result.Standbynodes
+            if (masterNodes.some((e) => e === candidate.candidate.candidate)) {
+                return ({
+                    ...candidate,
+                    candidateStatus:{
+                        ...candidate.candidateStatus,
+                        result:{
+                            ...candidate.candidateStatus.result,
+                            status: 'MASTERNODE'
+                        }
+                    }
+                })
+            } else if (standByNodes.some((e) => e === candidate.candidate.candidate)) {
+                return ({
+                    ...candidate,
+                    candidateStatus:{
+                        ...candidate.candidateStatus,
+                        result:{
+                            ...candidate.candidateStatus.result,
+                            status: 'STANDBY'
+                        }
+                    }
+                })
+            } else {
+                return { ...candidate }
+            }
+        })
+
+        await Promise.all(finalList.map(async ({ candidateStatus, candidate }) => {
             const result = candidateStatus?.result?.status
             switch (result) {
             case 'MASTERNODE':
@@ -573,10 +613,15 @@ async function updateLatestSignedBlock (blk) {
         for (let hash of ((blk || {}).transactions || [])) {
             let tx = await web3Rpc.eth.getTransaction(hash)
             if ((tx || {}).to === 'xdc' + config.get('blockchain.blockSignerAddress').substring(2)) {
-                let signer = tx.from
+                let signer
+                if (tx.from.substring(0, 3) === 'xdc') {
+                    signer = '0x' + tx.from.substring(3)
+                }
+
                 let buff = Buffer.from((tx.input || '').substring(2), 'hex')
                 let sbuff = buff.slice(buff.length - 32, buff.length)
                 let bN = ((await web3Rpc.eth.getBlock('0x' + sbuff.toString('hex'))) || {}).number
+
                 if (!bN) {
                     logger.debug('Bypass signer %s sign %s', signer, 'xdc' + sbuff.toString('hex'))
                     continue
