@@ -331,6 +331,7 @@ async function updateSignerPenAndStatus () {
 
         const finalList = candidatesWithStatus.map((candidate) => {
             const masterNodes = candidateAddressData.data.result.Masternodes
+            const slashNodes = candidateAddressData.data.result.Penalty
             const standByNodes = candidateAddressData.data.result.Standbynodes
             let candid = candidate.candidate.candidate
             if (candid.substring(0, 3) === 'xdc') {
@@ -344,6 +345,17 @@ async function updateSignerPenAndStatus () {
                         result:{
                             ...candidate.candidateStatus.result,
                             status: 'MASTERNODE'
+                        }
+                    }
+                })
+            } else if (slashNodes.some((e) => e === candid)) {
+                return ({
+                    ...candidate,
+                    candidateStatus:{
+                        ...candidate.candidateStatus,
+                        result:{
+                            ...candidate.candidateStatus.result,
+                            status: 'SLASHED'
                         }
                     }
                 })
