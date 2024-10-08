@@ -10,7 +10,7 @@
                     <b-card class="XDC-card">
                         <h6 class="XDC-card__title">MasterNode / Total Nodes</h6>
                         <p class="XDC-card__text">
-                            {{ activeCandidates }}/{{ activeCandidates+totalProposedNodes }}
+                            {{ activeCandidates }}/{{ activeCandidates + totalProposedNodes + slashedMN }}
                         </p>
                     </b-card>
                 </div>
