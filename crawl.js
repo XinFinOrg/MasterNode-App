@@ -167,16 +167,16 @@ async function updateCandidateInfo (candidate) {
         let owner = (await validator.methods.getCandidateOwner(candidate).call() || '').toLowerCase()
         let status = await validator.methods.isCandidate(candidate).call()
 
-        /* if (candidate.substring(0, 2) === '0x') {
+        if (candidate.substring(0, 2) === '0x') {
             candidate = 'xdc' + candidate.substring(2)
         }
         if (owner.substring(0, 2) === '0x') {
             owner = 'xdc' + owner.substring(2)
-        } */
+        }
 
         let result
         // logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
-        if (candidate !== '0x0000000000000000000000000000000000000000') {
+        if (candidate !== 'xdc0000000000000000000000000000000000000000') {
             // check current status
             const candateInDB = await db.Candidate.findOne({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
@@ -332,7 +332,11 @@ async function updateSignerPenAndStatus () {
         const finalList = candidatesWithStatus.map((candidate) => {
             const masterNodes = candidateAddressData.data.result.Masternodes
             const standByNodes = candidateAddressData.data.result.Standbynodes
-            if (masterNodes.some((e) => e === candidate.candidate.candidate)) {
+            let candid = candidate.candidate.candidate
+            if (candid.substring(0, 3) === 'xdc') {
+                candid = '0x' + candid.substring(3)
+            }
+            if (masterNodes.some((e) => e === candid)) {
                 return ({
                     ...candidate,
                     candidateStatus:{
@@ -343,7 +347,7 @@ async function updateSignerPenAndStatus () {
                         }
                     }
                 })
-            } else if (standByNodes.some((e) => e === candidate.candidate.candidate)) {
+            } else if (standByNodes.some((e) => e === candid)) {
                 return ({
                     ...candidate,
                     candidateStatus:{
@@ -613,11 +617,7 @@ async function updateLatestSignedBlock (blk) {
         for (let hash of ((blk || {}).transactions || [])) {
             let tx = await web3Rpc.eth.getTransaction(hash)
             if ((tx || {}).to === 'xdc' + config.get('blockchain.blockSignerAddress').substring(2)) {
-                let signer
-                if (tx.from.substring(0, 3) === 'xdc') {
-                    signer = '0x' + tx.from.substring(3)
-                }
-
+                let signer = tx.from
                 let buff = Buffer.from((tx.input || '').substring(2), 'hex')
                 let sbuff = buff.slice(buff.length - 32, buff.length)
                 let bN = ((await web3Rpc.eth.getBlock('0x' + sbuff.toString('hex'))) || {}).number
