@@ -93,7 +93,7 @@ router.get('/masternodes', [
     try {
         const activeCandidates = db.Candidate.countDocuments({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: { $nin: ['RESIGNED', 'STANDBY'] }
+            status: 'MASTERNODE'
         })
 
         const totalSlashed = db.Candidate.countDocuments({
@@ -125,7 +125,7 @@ router.get('/masternodes', [
 
         const candidates = await db.Candidate.find({
             smartContractAddress: config.get('blockchain.validatorAddress'),
-            status: { $nin: ['RESIGNED', 'STANDBY'] }
+            status: 'MASTERNODE'
         }).sort(sort).limit(limit).skip(skip).lean().exec()
 
         return res.json({
