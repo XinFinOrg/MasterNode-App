@@ -330,49 +330,33 @@ async function updateSignerPenAndStatus () {
         const candidateAddressData = await axios.post(config.get('blockchain.rpc'), data)
 
         const finalList = candidatesWithStatus.map((candidate) => {
-            const masterNodes = candidateAddressData.data.result.Masternodes
-            const slashNodes = candidateAddressData.data.result.Penalty
-            const standByNodes = candidateAddressData.data.result.Standbynodes
-            let candid = candidate.candidate.candidate
-            if (candid.substring(0, 3) === 'xdc') {
-                candid = '0x' + candid.substring(3)
+            const { Masternodes: masterNodes, Penalty: slashNodes, Standbynodes: standByNodes } = candidateAddressData.data.result
+            const candid = candidate.candidate.candidate.startsWith('xdc')
+                ? '0x' + candidate.candidate.candidate.substring(3)
+                : candidate.candidate.candidate
+
+            let status = ''
+
+            if (masterNodes.includes(candid)) {
+                status = 'MASTERNODE'
+            } else if (slashNodes.includes(candid)) {
+                status = 'SLASHED'
+            } else if (standByNodes.includes(candid)) {
+                status = 'STANDBY'
             }
-            if (masterNodes.some((e) => e === candid)) {
-                return ({
+
+            return status
+                ? {
                     ...candidate,
-                    candidateStatus:{
+                    candidateStatus: {
                         ...candidate.candidateStatus,
-                        result:{
+                        result: {
                             ...candidate.candidateStatus.result,
-                            status: 'MASTERNODE'
+                            status
                         }
                     }
-                })
-            } else if (slashNodes.some((e) => e === candid)) {
-                return ({
-                    ...candidate,
-                    candidateStatus:{
-                        ...candidate.candidateStatus,
-                        result:{
-                            ...candidate.candidateStatus.result,
-                            status: 'SLASHED'
-                        }
-                    }
-                })
-            } else if (standByNodes.some((e) => e === candid)) {
-                return ({
-                    ...candidate,
-                    candidateStatus:{
-                        ...candidate.candidateStatus,
-                        result:{
-                            ...candidate.candidateStatus.result,
-                            status: 'STANDBY'
-                        }
-                    }
-                })
-            } else {
-                return { ...candidate }
-            }
+                }
+                : { ...candidate }
         })
 
         await Promise.all(finalList.map(async ({ candidateStatus, candidate }) => {
@@ -431,7 +415,7 @@ async function updateSignerPenAndStatus () {
                     .catch(error => console.log(error))
                 penalties.push(candidate.candidate)
                 break
-            case 'PROPOSED':
+            case 'STANDBY':
                 await db.Candidate.findOneAndUpdate({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: candidate.candidate.toLowerCase()
