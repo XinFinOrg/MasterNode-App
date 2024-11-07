@@ -251,10 +251,12 @@ async function getCurrentCandidates () {
         console.log('candidates', candidates)
         const prevCandidates = await db.Candidate.find({})
 
+        console.log('prevCandidates', prevCandidates)
         await db.Candidate.remove({})
         console.log('all candidates removed')
         let map = candidates.map(async (candidate) => {
-            const storedDetails = prevCandidates.find((e) => e.candidate === candidate)
+            console.log('candidate', candidate)
+            const storedDetails = prevCandidates.find((e) => e.candidate === candidate.replace('0x', 'xdc').toLowerCase())
 
             const storedLatestSignedBlock = storedDetails?.latestSignedBlock || 0
             const prevStatus = storedDetails?.status || null
@@ -279,7 +281,7 @@ async function getCurrentCandidates () {
     } finally {
         const prevCandidates = await db.Candidate.find({})
 
-        console.log('prevCandidates', prevCandidates)
+        console.log('after update', prevCandidates)
     }
 }
 
