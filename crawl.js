@@ -160,7 +160,7 @@ async function watchValidator () {
     }
 }
 
-async function updateCandidateInfo (candidate) {
+async function updateCandidateInfo (candidate, storedLatestSignedBlock = 0) {
     try {
         // let capacity = await validator.methods.getCandidateCap(candidate).call()
         let capacity = 10000000000000000000000000
@@ -191,6 +191,7 @@ async function updateCandidateInfo (candidate) {
                 candidate: candidate
             }, {
                 $set: {
+                    storedLatestSignedBlock: storedLatestSignedBlock,
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: candidate,
                     capacity: String(capacity),
@@ -247,6 +248,7 @@ async function updateVoterCap (candidate, voter) {
 async function getCurrentCandidates () {
     try {
         let candidates = await validator.methods.getCandidates().call()
+        console.log('candidates', candidates)
         let candidatesInDb = await db.Candidate.find({
             smartContractAddress: config.get('blockchain.validatorAddress')
         }).lean().exec()
@@ -255,10 +257,18 @@ async function getCurrentCandidates () {
             return it.toLowerCase()
         })
 
+        const prevCandidates = await db.Candidate.find({})
+
+        await db.Candidate.remove({})
         let map = candidates.map(async (candidate) => {
+            const storedDetails = prevCandidates.find((e) => e.candidate === candidate)
+
+            const storedLatestSignedBlock = storedDetails?.latestSignedBlock || 0
+
             if (candidate.substring(0, 3) === 'xdc') {
                 candidate = '0x' + candidate.substring(3)
             }
+
             candidate = (candidate || '').toLowerCase()
             let voters = await validator.methods.getVoters(candidate).call()
             let m = voters.map(v => {
@@ -267,7 +277,7 @@ async function getCurrentCandidates () {
             })
 
             await Promise.all(m)
-            return updateCandidateInfo(candidate)
+            return updateCandidateInfo(candidate, storedLatestSignedBlock)
         })
         return Promise.all(map).catch(e => logger.info('getCurrentCandidates %s', e))
     } catch (e) {
@@ -275,24 +285,24 @@ async function getCurrentCandidates () {
     }
 }
 
-async function getChunkCandidateStatus (candidates) {
-    try {
-        const candatesStatus = await Promise.all(candidates.map(async (c) => {
-            const data = {
-                'jsonrpc': '2.0',
-                'method': 'eth_getCandidateStatus',
-                'params': [c.candidate.toLowerCase(), 'latest'],
-                'id': config.get('blockchain.networkId')
-            }
-            const response = await axios.post(config.get('blockchain.rpc'), data)
-            return { candidateStatus:response.data, candidate:c }
-        }))
+// async function getChunkCandidateStatus (candidates) {
+//     try {
+//         const candatesStatus = await Promise.all(candidates.map(async (c) => {
+//             const data = {
+//                 'jsonrpc': '2.0',
+//                 'method': 'eth_getCandidateStatus',
+//                 'params': [c.candidate.toLowerCase(), 'latest'],
+//                 'id': config.get('blockchain.networkId')
+//             }
+//             const response = await axios.post(config.get('blockchain.rpc'), data)
+//             return { candidateStatus:response.data, candidate:c }
+//         }))
 
-        return candatesStatus
-    } catch (e) {
-        logger.error('getChunkCandidate %s', e)
-    }
-}
+//         return candatesStatus
+//     } catch (e) {
+//         logger.error('getChunkCandidate %s', e)
+//     }
+// }
 
 async function updateSignerPenAndStatus () {
     try {
@@ -310,15 +320,16 @@ async function updateSignerPenAndStatus () {
             }
         })
 
-        let candidatesWithStatus = []
-        let startIndex = 0
-        const getItems = 40
-        while (startIndex < candidates.length) {
-            const candidateStatus = await getChunkCandidateStatus(candidates.slice(startIndex, getItems + startIndex)) || []
-            candidatesWithStatus = [...candidatesWithStatus, ...candidateStatus]
-            console.log(`got ${startIndex}, ${getItems + startIndex}`)
-            startIndex += getItems
-        }
+        // let candidatesWithStatus = []
+        // let startIndex = 0
+        // const getItems = 40
+
+        // while (startIndex < candidates.length) {
+        //     const candidateStatus = await getChunkCandidateStatus(candidates.slice(startIndex, getItems + startIndex)) || []
+        //     candidatesWithStatus = [...candidatesWithStatus, ...candidateStatus]
+        //     console.log(`got ${startIndex}, ${getItems + startIndex}`)
+        //     startIndex += getItems
+        // }
 
         const data = {
             'jsonrpc': '2.0',
@@ -328,39 +339,47 @@ async function updateSignerPenAndStatus () {
         }
 
         const candidateAddressData = await axios.post(config.get('blockchain.rpc'), data)
+        const { Masternodes: masterNodes, Penalty: slashNodes, Standbynodes: standByNodes } = candidateAddressData.data.result
 
-        const finalList = candidatesWithStatus.map((candidate) => {
-            const { Masternodes: masterNodes, Penalty: slashNodes, Standbynodes: standByNodes } = candidateAddressData.data.result
-            const candid = candidate.candidate.candidate.startsWith('xdc')
-                ? '0x' + candidate.candidate.candidate.substring(3)
-                : candidate.candidate.candidate
+        let masterNodeCount = 0
+        let standByNodeCount = 0
+        let slashNodeCount = 0
+        const finalList = candidates.map((candidate) => {
+            const candid = candidate.candidate.startsWith('xdc')
+                ? '0x' + candidate.candidate.substring(3)
+                : candidate.candidate
 
-            let status = ''
+            let status = null
 
             if (masterNodes.includes(candid)) {
                 status = 'MASTERNODE'
+                masterNodeCount = masterNodeCount + 1
             } else if (slashNodes.includes(candid)) {
                 status = 'SLASHED'
+                slashNodeCount = slashNodeCount + 1
             } else if (standByNodes.includes(candid)) {
                 status = 'STANDBY'
+                standByNodeCount = standByNodeCount + 1
             }
 
-            return status
-                ? {
-                    ...candidate,
-                    candidateStatus: {
-                        ...candidate.candidateStatus,
-                        result: {
-                            ...candidate.candidateStatus.result,
-                            status
-                        }
-                    }
-                }
-                : { ...candidate }
-        })
+            return {
+                socials: candidate.status,
+                _id: candidate._id,
+                candidate: candidate.candidate,
+                smartContractAddress: candidate.smartContractAddress,
+                capacity: candidate.capacity,
+                capacityNumber: candidate.capacityNumber,
+                createdAt: candidate.createdAt,
+                nodeId: candidate.nodeId,
+                owner: candidate.owner,
+                status: status,
+                updatedAt: candidate.updatedAt
+            }
+        }).filter((e) => e.status)
 
-        await Promise.all(finalList.map(async ({ candidateStatus, candidate }) => {
-            const result = candidateStatus?.result?.status
+        await Promise.all(finalList.map(async (candidate) => {
+            const result = candidate.status
+
             switch (result) {
             case 'MASTERNODE':
                 signers.push(candidate.candidate)
@@ -466,7 +485,8 @@ async function watchNewBlock (n) {
             blockNumber = n
             // logger.info('Watch new block every 1 second blkNumber %s', n)
             let blk = await web3.eth.getBlock(blockNumber)
-            if (n % config.get('blockchain.epoch') === 10) {
+
+            if (n % config.get('blockchain.epoch') === 0) {
                 await updateSignerPenAndStatus()
                 // update rank history
                 {
