@@ -259,7 +259,8 @@ async function getCurrentCandidates () {
 
         const prevCandidates = await db.Candidate.find({})
 
-        await db.Candidate.remove({})
+        // await db.Candidate.remove({})
+        console.log('all candidates removed')
         let map = candidates.map(async (candidate) => {
             const storedDetails = prevCandidates.find((e) => e.candidate === candidate)
 
@@ -282,6 +283,10 @@ async function getCurrentCandidates () {
         return Promise.all(map).catch(e => logger.info('getCurrentCandidates %s', e))
     } catch (e) {
         logger.info('getCurrentCandidates2 %s', e)
+    } finally {
+        const prevCandidates = await db.Candidate.find({})
+
+        console.log('prevCandidates', prevCandidates)
     }
 }
 
@@ -707,7 +712,8 @@ async function getPastEvent () {
     })
 }
 
-getCurrentCandidates().then(() => {
+getCurrentCandidates().then((e) => {
+    console.log(e)
     return updateSignerPenAndStatus()
 }).then(() => {
     return getPastEvent().then(() => {
