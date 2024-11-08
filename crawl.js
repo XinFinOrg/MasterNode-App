@@ -142,7 +142,14 @@ async function watchValidator () {
                     }
                 }
                 if (candidate !== '') {
-                    await updateCandidateInfo(candidate)
+                    const candidateInfor = await db.Candidate.findOne({
+                        smartContractAddress: config.get('blockchain.validatorAddress'),
+                        candidate: candidate.toLowerCase()
+                    })
+
+                    if (candidateInfor) {
+                        await updateCandidateInfo(candidate, candidateInfor?.latestSignedBlock, candidateInfor?.status)
+                    }
                 }
             })
 
@@ -185,13 +192,12 @@ async function updateCandidateInfo (candidate, storedLatestSignedBlock = 0, prev
             status = (status)
                 ? ((candateInDB.status === 'RESIGNED') ? 'STANDBY' : (prevStatus || 'STANDBY'))
                 : 'RESIGNED'
-            console.log('status', status)
             result = await db.Candidate.findOneAndUpdate({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
                 candidate: candidate
             }, {
                 $set: {
-                    storedLatestSignedBlock: storedLatestSignedBlock,
+                    latestSignedBlock: storedLatestSignedBlock,
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: candidate,
                     capacity: String(capacity),
@@ -248,14 +254,9 @@ async function updateVoterCap (candidate, voter) {
 async function getCurrentCandidates () {
     try {
         let candidates = await validator.methods.getCandidates().call()
-        console.log('candidates', candidates)
         const prevCandidates = await db.Candidate.find({})
-
-        console.log('prevCandidates', prevCandidates)
         await db.Candidate.remove({})
-        console.log('all candidates removed')
         let map = candidates.map(async (candidate) => {
-            console.log('candidate', candidate)
             const storedDetails = prevCandidates.find((e) => e.candidate === candidate.replace('0x', 'xdc').toLowerCase())
 
             const storedLatestSignedBlock = storedDetails?.latestSignedBlock || 0
@@ -278,10 +279,6 @@ async function getCurrentCandidates () {
         return Promise.all(map).catch(e => logger.info('getCurrentCandidates %s', e))
     } catch (e) {
         logger.info('getCurrentCandidates2 %s', e)
-    } finally {
-        const prevCandidates = await db.Candidate.find({})
-
-        console.log('after update', prevCandidates)
     }
 }
 
@@ -320,7 +317,6 @@ async function updateSignerPenAndStatus () {
             }
         })
 
-        console.log('status', candidates.map((e) => e.status))
         // let candidatesWithStatus = []
         // let startIndex = 0
         // const getItems = 40
@@ -380,7 +376,6 @@ async function updateSignerPenAndStatus () {
 
         await Promise.all(finalList.map(async (candidate) => {
             const result = candidate.status
-            console.log('updated status', result)
             switch (result) {
             case 'MASTERNODE':
                 signers.push(candidate.candidate)
