@@ -26,7 +26,7 @@
                     <b-card class="XDC-card XDC-card">
                         <h6 class="XDC-card__title">Epoch / Block Number</h6>
                         <p class="XDC-card__text">
-                            {{ Math.floor(chainConfig.blockNumber / chainConfig.epoch) + 1 }} / {{ chainConfig.blockNumber }}</p>
+                            {{ Math.floor(chainConfig.blockNumber / chainConfig.epoch) + 1 }} / {{ candidates[0].latestSignedBlock }}</p>
                     </b-card>
                 </div>
                 <!--<div
