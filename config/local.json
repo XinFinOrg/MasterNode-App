@@ -32,7 +32,7 @@
         "uri": "mongodb://localhost:27017/mnApp"
     },
     "explorerUrl": "https://xdc.blocksscan.io",
-    "XDCscanUrl": "https://xdc.blocksscan.io",
+    "XDCscanUrl": "https://rpc.tradefinex.org",
     "baseUrl": "https://master.xinfin.network/",
     "truffle": {
         "mnemonic": "",
