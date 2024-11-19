@@ -13,8 +13,8 @@
         "walletconnectProjectId":"0000000000000000000000000000000000000",
         "rpc": "https://mnrpc.xinfin.network",
         "ws": "wss://mnws.xinfin.network/",
-        "internalRpc": "http://localhost:8989",
-        "internalWs": "ws://localhost:8888",
+        "internalRpc": "https://mnrpc.xinfin.network",
+        "internalWs": "wss://mnws.xinfin.network/",
         "networkId": 50,
         "epoch": 900,
         "blockTime": 2,
@@ -32,7 +32,7 @@
         "uri": "mongodb://localhost:27017/mnApp"
     },
     "explorerUrl": "https://xdc.blocksscan.io",
-    "XDCscanUrl": "https://xdc.blocksscan.io",
+    "XDCscanUrl": "https://xdc.network",
     "baseUrl": "https://master.xinfin.network/",
     "truffle": {
         "mnemonic": "",
