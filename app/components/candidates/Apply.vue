@@ -569,7 +569,8 @@ export default {
                     const { data } = await axios.post('/api/ipfs/addKYC', formData)
                     let contract// = await self.getXDCValidatorInstance()
                     contract = self.XDCValidator
-                    const gasPrice = await this.web3.eth.getGasPrice() * 1.40
+                    const currentGasPrice = this.web3.utils.toBN(await this.web3.eth.getGasPrice())
+                    const gasPrice = currentGasPrice.muln(14).divn(10)
                     let txParams = {
                         from : this.account,
                         gasPrice: this.web3.utils.toHex(gasPrice),
