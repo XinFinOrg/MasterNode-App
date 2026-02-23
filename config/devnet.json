@@ -1,7 +1,7 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "port": 6001
+        "port": 7001
     },
     "logs": {
         "level": "debug"
