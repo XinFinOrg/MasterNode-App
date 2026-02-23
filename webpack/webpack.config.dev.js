@@ -30,7 +30,7 @@ const webpackConfig = merge(commonConfig, {
         // },
         proxy: {
             '/api/*': {
-                target: 'http://localhost:5001',
+                target: 'http://localhost:6001',
                 secure: false
             }
         }
