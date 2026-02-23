@@ -71,13 +71,19 @@
                                     label="Stake"
                                     label-for="apply-value">
                                     <b-input-group>
-                                        <p class="form-control">{{ applyValue }}</p>
-                                        <!--<number-input
+                                        <!-- <p class="form-control">{{ applyValue }}</p> -->
+                                        <!-- <number-input
                                             :class="getValidationClass('applyValue')"
                                             :min="0.1"
                                             :step="0.1"
                                             v-model="applyValue"
-                                            name="apply-value"/>-->
+                                            name="apply-value"/> -->
+                                        <b-form-input
+                                            :class="getValidationClass('applyValue')"
+                                            v-model="applyValue"
+                                            name="apply-value"
+                                            autocomplete="off"
+                                            type="number"/>
                                         <b-input-group-append>
                                             <i class="tm-XDC" />
                                         </b-input-group-append>
