@@ -9,7 +9,6 @@ const BigNumber = require('bignumber.js')
 const moment = require('moment')
 const logger = require('./helpers/logger')
 const axios = require('axios')
-const _ = require('lodash')
 const TwitterHelper = require('./helpers/twitter')
 
 process.setMaxListeners(100)
@@ -143,7 +142,14 @@ async function watchValidator () {
                     }
                 }
                 if (candidate !== '') {
-                    await updateCandidateInfo(candidate)
+                    const candidateInfor = await db.Candidate.findOne({
+                        smartContractAddress: config.get('blockchain.validatorAddress'),
+                        candidate: candidate.toLowerCase()
+                    })
+
+                    if (candidateInfor) {
+                        await updateCandidateInfo(candidate, candidateInfor?.latestSignedBlock, candidateInfor?.status)
+                    }
                 }
             })
 
@@ -160,17 +166,24 @@ async function watchValidator () {
     }
 }
 
-async function updateCandidateInfo (candidate) {
+async function updateCandidateInfo (candidate, storedLatestSignedBlock = 0, prevStatus) {
     try {
         // let capacity = await validator.methods.getCandidateCap(candidate).call()
         let capacity = 10000000000000000000000000
-        let owner = (await validator.methods.getCandidateOwner(candidate).call() || '').toLowerCase()
-        let status = await validator.methods.isCandidate(candidate).call()
+        let owner = ''
+        let status = null
+
+        try {
+            owner = (await validator.methods.getCandidateOwner(candidate).call() || '').toLowerCase()
+            status = await validator.methods.isCandidate(candidate).call()
+        } catch (rpcErr) {
+            logger.error('RPC Error in updateCandidateInfo %s', rpcErr.message)
+        }
 
         if (candidate.substring(0, 2) === '0x') {
             candidate = 'xdc' + candidate.substring(2)
         }
-        if (owner.substring(0, 2) === '0x') {
+        if (owner && owner.substring(0, 2) === '0x') {
             owner = 'xdc' + owner.substring(2)
         }
 
@@ -183,20 +196,25 @@ async function updateCandidateInfo (candidate) {
                 candidate: candidate
             }) || {}
 
-            status = (status)
-                ? ((candateInDB.status === 'RESIGNED') ? 'STANDBY' : (candateInDB.status || 'STANDBY'))
-                : 'RESIGNED'
+            let newStatus = candateInDB.status || 'STANDBY'
+            if (status !== null) {
+                newStatus = (status)
+                    ? ((candateInDB.status === 'RESIGNED') ? 'STANDBY' : (prevStatus || 'STANDBY'))
+                    : 'RESIGNED'
+            }
+
             result = await db.Candidate.findOneAndUpdate({
                 smartContractAddress: config.get('blockchain.validatorAddress'),
                 candidate: candidate
             }, {
                 $set: {
+                    latestSignedBlock: storedLatestSignedBlock,
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: candidate,
                     capacity: String(capacity),
                     capacityNumber: (new BigNumber(capacity)).div(1e18).toString(10),
-                    status: status,
-                    owner: owner
+                    status: newStatus,
+                    owner: owner || candateInDB.owner
                 },
                 $setOnInsert: {
                     nodeId: candidate.replace('xdc', '')
@@ -217,7 +235,14 @@ async function updateCandidateInfo (candidate) {
 
 async function updateVoterCap (candidate, voter) {
     try {
-        let capacity = await validator.methods.getVoterCap(candidate, voter).call()
+        let capacity = 0
+        try {
+            capacity = await validator.methods.getVoterCap(candidate, voter).call()
+        } catch (rpcErr) {
+            logger.error('RPC Error in getVoterCap %s', rpcErr.message)
+            return
+        }
+
         if (voter.substring(0, 2) === '0x') {
             voter = 'xdc' + voter.substring(2)
         }
@@ -246,28 +271,42 @@ async function updateVoterCap (candidate, voter) {
 // Get current candates
 async function getCurrentCandidates () {
     try {
-        let candidates = await validator.methods.getCandidates().call()
-        let candidatesInDb = await db.Candidate.find({
-            smartContractAddress: config.get('blockchain.validatorAddress')
-        }).lean().exec()
-        candidatesInDb = candidatesInDb.map(c => c.candidate)
-        candidates = _.uniqBy(_.concat(candidates, candidatesInDb), (it) => {
-            return it.toLowerCase()
-        })
+        let candidates = []
+        try {
+            candidates = await validator.methods.getCandidates().call()
+        } catch (rpcErr) {
+            logger.error('RPC Error in getCandidates %s', rpcErr.message)
+            return
+        }
 
+        const prevCandidates = await db.Candidate.find({})
+        await db.Candidate.remove({})
         let map = candidates.map(async (candidate) => {
+            const storedDetails = prevCandidates.find((e) => e.candidate === candidate.replace('0x', 'xdc').toLowerCase())
+
+            const storedLatestSignedBlock = storedDetails?.latestSignedBlock || 0
+            const prevStatus = storedDetails?.status || null
+
             if (candidate.substring(0, 3) === 'xdc') {
                 candidate = '0x' + candidate.substring(3)
             }
+
             candidate = (candidate || '').toLowerCase()
-            let voters = await validator.methods.getVoters(candidate).call()
+
+            let voters = []
+            try {
+                voters = await validator.methods.getVoters(candidate).call()
+            } catch (rpcErr) {
+                logger.error('RPC Error in getVoters %s', rpcErr.message)
+            }
+
             let m = voters.map(v => {
                 v = (v || '').toLowerCase()
                 return updateVoterCap(candidate, v)
             })
 
             await Promise.all(m)
-            return updateCandidateInfo(candidate)
+            return updateCandidateInfo(candidate, storedLatestSignedBlock, prevStatus)
         })
         return Promise.all(map).catch(e => logger.info('getCurrentCandidates %s', e))
     } catch (e) {
@@ -275,24 +314,24 @@ async function getCurrentCandidates () {
     }
 }
 
-async function getChunkCandidateStatus (candidates) {
-    try {
-        const candatesStatus = await Promise.all(candidates.map(async (c) => {
-            const data = {
-                'jsonrpc': '2.0',
-                'method': 'eth_getCandidateStatus',
-                'params': [c.candidate.toLowerCase(), 'latest'],
-                'id': config.get('blockchain.networkId')
-            }
-            const response = await axios.post(config.get('blockchain.rpc'), data)
-            return { candidateStatus:response.data, candidate:c }
-        }))
+// async function getChunkCandidateStatus (candidates) {
+//     try {
+//         const candatesStatus = await Promise.all(candidates.map(async (c) => {
+//             const data = {
+//                 'jsonrpc': '2.0',
+//                 'method': 'eth_getCandidateStatus',
+//                 'params': [c.candidate.toLowerCase(), 'latest'],
+//                 'id': config.get('blockchain.networkId')
+//             }
+//             const response = await axios.post(config.get('blockchain.rpc'), data)
+//             return { candidateStatus:response.data, candidate:c }
+//         }))
 
-        return candatesStatus
-    } catch (e) {
-        logger.error('getChunkCandidate %s', e)
-    }
-}
+//         return candatesStatus
+//     } catch (e) {
+//         logger.error('getChunkCandidate %s', e)
+//     }
+// }
 
 async function updateSignerPenAndStatus () {
     try {
@@ -310,15 +349,16 @@ async function updateSignerPenAndStatus () {
             }
         })
 
-        let candidatesWithStatus = []
-        let startIndex = 0
-        const getItems = 40
-        while (startIndex < candidates.length) {
-            const candidateStatus = await getChunkCandidateStatus(candidates.slice(startIndex, getItems + startIndex)) || []
-            candidatesWithStatus = [...candidatesWithStatus, ...candidateStatus]
-            console.log(`got ${startIndex}, ${getItems + startIndex}`)
-            startIndex += getItems
-        }
+        // let candidatesWithStatus = []
+        // let startIndex = 0
+        // const getItems = 40
+
+        // while (startIndex < candidates.length) {
+        //     const candidateStatus = await getChunkCandidateStatus(candidates.slice(startIndex, getItems + startIndex)) || []
+        //     candidatesWithStatus = [...candidatesWithStatus, ...candidateStatus]
+        //     console.log(`got ${startIndex}, ${getItems + startIndex}`)
+        //     startIndex += getItems
+        // }
 
         const data = {
             'jsonrpc': '2.0',
@@ -327,44 +367,59 @@ async function updateSignerPenAndStatus () {
             'id': config.get('blockchain.networkId')
         }
 
-        const candidateAddressData = await axios.post(config.get('blockchain.rpc'), data)
+        let candidateAddressData
+        try {
+            candidateAddressData = await axios.post(config.get('blockchain.rpc'), data)
+        } catch (rpcErr) {
+            logger.error('RPC Error XDPoS_getMasternodesByNumber %s', rpcErr.message)
+            return
+        }
 
-        const finalList = candidatesWithStatus.map((candidate) => {
-            const masterNodes = candidateAddressData.data.result.Masternodes
-            const standByNodes = candidateAddressData.data.result.Standbynodes
-            let candid = candidate.candidate.candidate
-            if (candid.substring(0, 3) === 'xdc') {
-                candid = '0x' + candid.substring(3)
-            }
-            if (masterNodes.some((e) => e === candid)) {
-                return ({
-                    ...candidate,
-                    candidateStatus:{
-                        ...candidate.candidateStatus,
-                        result:{
-                            ...candidate.candidateStatus.result,
-                            status: 'MASTERNODE'
-                        }
-                    }
-                })
-            } else if (standByNodes.some((e) => e === candid)) {
-                return ({
-                    ...candidate,
-                    candidateStatus:{
-                        ...candidate.candidateStatus,
-                        result:{
-                            ...candidate.candidateStatus.result,
-                            status: 'STANDBY'
-                        }
-                    }
-                })
-            } else {
-                return { ...candidate }
-            }
-        })
+        if (!candidateAddressData.data || !candidateAddressData.data.result) {
+            logger.error('RPC Error invalid data returned from XDPoS_getMasternodesByNumber')
+            return
+        }
 
-        await Promise.all(finalList.map(async ({ candidateStatus, candidate }) => {
-            const result = candidateStatus?.result?.status
+        const { Masternodes: masterNodes, Penalty: slashNodes, Standbynodes: standByNodes } = candidateAddressData.data.result
+
+        let masterNodeCount = 0
+        let standByNodeCount = 0
+        let slashNodeCount = 0
+        const finalList = candidates.map((candidate) => {
+            const candid = candidate.candidate.startsWith('xdc')
+                ? '0x' + candidate.candidate.substring(3)
+                : candidate.candidate
+
+            let status = null
+
+            if (masterNodes.includes(candid)) {
+                status = 'MASTERNODE'
+                masterNodeCount = masterNodeCount + 1
+            } else if (slashNodes.includes(candid)) {
+                status = 'SLASHED'
+                slashNodeCount = slashNodeCount + 1
+            } else if (standByNodes.includes(candid)) {
+                status = 'STANDBY'
+                standByNodeCount = standByNodeCount + 1
+            }
+
+            return {
+                socials: candidate.status,
+                _id: candidate._id,
+                candidate: candidate.candidate,
+                smartContractAddress: candidate.smartContractAddress,
+                capacity: candidate.capacity,
+                capacityNumber: candidate.capacityNumber,
+                createdAt: candidate.createdAt,
+                nodeId: candidate.nodeId,
+                owner: candidate.owner,
+                status: status,
+                updatedAt: candidate.updatedAt
+            }
+        }).filter((e) => e.status)
+
+        await Promise.all(finalList.map(async (candidate) => {
+            const result = candidate.status
             switch (result) {
             case 'MASTERNODE':
                 signers.push(candidate.candidate)
@@ -419,7 +474,7 @@ async function updateSignerPenAndStatus () {
                     .catch(error => console.log(error))
                 penalties.push(candidate.candidate)
                 break
-            case 'PROPOSED':
+            case 'STANDBY':
                 await db.Candidate.findOneAndUpdate({
                     smartContractAddress: config.get('blockchain.validatorAddress'),
                     candidate: candidate.candidate.toLowerCase()
@@ -470,7 +525,8 @@ async function watchNewBlock (n) {
             blockNumber = n
             // logger.info('Watch new block every 1 second blkNumber %s', n)
             let blk = await web3.eth.getBlock(blockNumber)
-            if (n % config.get('blockchain.epoch') === 10) {
+
+            if (n % config.get('blockchain.epoch') === 0) {
                 await updateSignerPenAndStatus()
                 // update rank history
                 {
@@ -691,7 +747,8 @@ async function getPastEvent () {
     })
 }
 
-getCurrentCandidates().then(() => {
+getCurrentCandidates().then((e) => {
+    // console.log(e.filter((e) => e !== null).filter((e) => e.status === 'STANDBY'))
     return updateSignerPenAndStatus()
 }).then(() => {
     return getPastEvent().then(() => {
