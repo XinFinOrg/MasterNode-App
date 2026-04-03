@@ -16,21 +16,31 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
 }
 
 router.post('/addKYC', async function (req, res, next) {
-    // console.log(req.files)
     console.log('File Name : ', req.files)
+    if (!req.files || !req.files.filename) {
+        return res.status(400).json({ message: 'No file uploaded' })
+    }
+
     let imageFile = req.files.filename
+
+    // 10MB validation
+    const maxSize = 10 * 1024 * 1024
+    if (imageFile.size > maxSize) {
+        return res.status(400).json({
+            message: 'File size should not exceed 10MB'
+        })
+    }
 
     xinFinClient.add(imageFile.data, async (err, ipfsHash) => {
         if (err != null) {
-            // error occured, log out the error
             console.error('Some error occured while adding KYC at /addKYC: ', err)
-            res.status(500).send(err)
-            return // need to handle this error
+            return res.status(500).send(err)
         }
+
         let hash = ipfsHash[0].hash
-        // all ok
         console.log(`Uploaded file; hash: ${hash}`)
-        res.status(200).json({ 'hash': hash })
+
+        res.status(200).json({ hash })
     })
 
     // imageFile.mv(path.join(__dirname, '../tmp/', name), function (err) {
