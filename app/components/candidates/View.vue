@@ -125,11 +125,12 @@
                                     <div class="XDC-detail-value-small">
                                         <span
                                             :class="XDC-info__description">
-                                            <a
+                                            <!-- <a
                                                 v-if="Boolean(KYC.status)"
                                                 :href="KYC.url"
                                                 target="_blank">Check here</a>
-                                            <template v-else><a href="/setting">Login to Get KYC</a></template>
+                                            <template v-else><a href="/setting">Login to Get KYC</a></template> -->
+                                            Verified
                                         </span>
                                     </div>
                                 </div>
