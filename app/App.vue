@@ -75,7 +75,7 @@
                 class="XDC-footer">
                 <div class="container">
                     <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-12">
                             <!-- <div class="XDC-footer__links">
                                 <ul class="list-inline">
                                     <li class="list-inline-item">
@@ -100,11 +100,11 @@
                                     </li>
                                 </ul>
                             </div> -->
-                            <div class="XDC-footer__copyright">
+                            <div class="XDC-footer__copyright text-center">
                                 &copy; {{ (new Date()).getFullYear() }} XDC.Network All rights reserved.
                             </div>
                         </div>
-                        <div class="col-md-4 XDC-footer__social">
+                        <!-- <div class="col-md-4 XDC-footer__social">
                             <ul class="list-inline">
                                 <li class="list-inline-item">
                                     <a
@@ -142,7 +142,7 @@
                                     </a>
                                 </li>
                             </ul>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </footer>
