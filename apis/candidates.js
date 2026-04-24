@@ -706,7 +706,7 @@ router.get('/:candidate/:owner/getRewards', [
         }
 
         const candidate = req.params.candidate
-        const owner = req.params.owner
+        // const owner = req.params.owner
 
         const latestBlockNumber = await web3.eth.getBlockNumber()
         const latestCheckpoint = latestBlockNumber - (latestBlockNumber % parseInt(config.get('blockchain.epoch')))
@@ -740,7 +740,10 @@ router.get('/:candidate/:owner/getRewards', [
         })
 
         let masternodes = epochData.filter(e => e.status === 'MASTERNODE')
-        const rewards = await axios.post(
+        const rewards = {
+            data: []
+        }
+        /* const rewards = await axios.post(
             urljoin(config.get('XDCscanUrl'), 'api/expose/MNRewardsByEpochs'),
             {
                 address: candidate,
@@ -748,7 +751,7 @@ router.get('/:candidate/:owner/getRewards', [
                 reason: 'Voter',
                 epoch: masternodesEpochs
             }
-        )
+        ) */
 
         if (rewards.data && rewards.data.length > 0) {
             const rwData = rewards.data
