@@ -45,9 +45,65 @@ app.use(helmet({
 }))
 
 // cors
+// app.use(cors({
+//     origin: config.get('cors')
+// }))
+
+app.use((req, res, next) => {
+    console.log('--- INCOMING REQUEST ---')
+    console.log('Method:', req.method)
+    console.log('URL:', req.originalUrl)
+    console.log('Origin:', req.headers.origin || 'NO ORIGIN')
+    console.log('Referer:', req.headers.referer || 'NO REFERER')
+    console.log('IP:', req.ip || req.socket.remoteAddress)
+
+    res.on('finish', () => {
+        console.log('Response Status:', res.statusCode)
+        console.log('--- REQUEST END ---')
+    })
+
+    next()
+})
+
 app.use(cors({
-    origin: config.get('cors')
+    origin: function (origin, callback) {
+        const allowedOrigins = config.get('cors')
+
+        console.log('--- CORS CHECK ---')
+        console.log('Origin:', origin || 'NO ORIGIN')
+
+        if (!origin) {
+            console.log('✅ No origin → allowing (server request)')
+            return callback(null, true)
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            console.log('✅ Allowed origin:', origin)
+            return callback(null, true)
+        }
+
+        console.log('❌ Blocked by CORS:', origin)
+        return callback(new Error('Not allowed by CORS'))
+    }
 }))
+
+app.use((err, req, res, next) => {
+    if (err && err.message === 'Not allowed by CORS') {
+        console.log('🚫 CORS ERROR')
+        console.log('Method:', req.method)
+        console.log('URL:', req.originalUrl)
+        console.log('Origin:', req.headers.origin || 'NO ORIGIN')
+
+        return res.status(403).json({
+            message: 'Blocked by CORS',
+            method: req.method,
+            url: req.originalUrl,
+            origin: req.headers.origin || null
+        })
+    }
+
+    next(err)
+})
 
 app.use(morgan('short', { stream: logger.stream }))
 
