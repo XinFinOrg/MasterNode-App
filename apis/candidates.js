@@ -5,8 +5,6 @@ const router = express.Router()
 const db = require('../models/mongodb')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const validator = require('../models/blockchain/validatorRpc')
-const HDWalletProvider = require('@truffle/hdwallet-provider')
-const PrivateKeyProvider = require('truffle-privatekey-provider')
 const config = require('config')
 const _ = require('lodash')
 const logger = require('../helpers/logger')
@@ -14,7 +12,31 @@ const { check, validationResult, query } = require('express-validator/check')
 const uuidv4 = require('uuid/v4')
 const urljoin = require('url-join')
 
-const gas = config.get('blockchain.gas')
+// const gas = config.get('blockchain.gas')
+const ALLOWED_CANDIDATE_SORT_FIELDS = new Set(['capacity', 'capacityNumber', 'name', 'status', 'rank', 'latestSignedBlock', 'createdAt'])
+const ALLOWED_VOTER_SORT_FIELDS = new Set(['capacityNumber', 'capacity', 'voter', 'createdAt'])
+const ALLOWED_SCHEMES = ['https:', 'http:']
+
+function validateUrl (url) {
+    try {
+        if (!url) return true
+        const parsed = new URL(url)
+        return ALLOWED_SCHEMES.includes(parsed.protocol) &&
+            parsed.hostname.includes('.') &&
+            url.length < 2048
+    } catch (e) { return false }
+}
+
+function normalizeSortField (sortBy, allowedFields, fallbackField) {
+    if (!sortBy || !allowedFields.has(sortBy)) {
+        return fallbackField
+    }
+    return sortBy
+}
+
+function normalizeSortOrder (sortDesc) {
+    return sortDesc === 'true' ? -1 : 1
+}
 
 router.get('/', [
     query('limit')
@@ -41,11 +63,13 @@ router.get('/', [
 
         const sort = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
+        const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_CANDIDATE_SORT_FIELDS, 'capacityNumber')
+        const sortOrder = normalizeSortOrder(req.query.sortDesc)
+        if (sortBy) {
+            sort[sortBy] = sortOrder
+            if (sortBy === 'capacity') {
                 delete sort.capacity
-                sort.capacityNumber = (req.query.sortDesc === 'true') ? -1 : 1
+                sort.capacityNumber = sortOrder
             }
         } else {
             sort.capacityNumber = -1
@@ -113,11 +137,13 @@ router.get('/masternodes', [
 
         const sort = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
+        const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_CANDIDATE_SORT_FIELDS, 'capacityNumber')
+        const sortOrder = normalizeSortOrder(req.query.sortDesc)
+        if (sortBy) {
+            sort[sortBy] = sortOrder
+            if (sortBy === 'capacity') {
                 delete sort.capacity
-                sort.capacityNumber = (req.query.sortDesc === 'true') ? -1 : 1
+                sort.capacityNumber = sortOrder
             }
         } else {
             sort.capacityNumber = -1
@@ -162,11 +188,13 @@ router.get('/slashedMNs', [
 
         const sort = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
+        const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_CANDIDATE_SORT_FIELDS, 'capacityNumber')
+        const sortOrder = normalizeSortOrder(req.query.sortDesc)
+        if (sortBy) {
+            sort[sortBy] = sortOrder
+            if (sortBy === 'capacity') {
                 delete sort.capacity
-                sort.capacityNumber = (req.query.sortDesc === 'true') ? -1 : 1
+                sort.capacityNumber = sortOrder
             }
         } else {
             sort.capacityNumber = -1
@@ -203,11 +231,13 @@ router.get('/proposedMNs', [
         skip = (req.query.page) ? limit * (req.query.page - 1) : 0
         const sort = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
+        const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_CANDIDATE_SORT_FIELDS, 'capacityNumber')
+        const sortOrder = normalizeSortOrder(req.query.sortDesc)
+        if (sortBy) {
+            sort[sortBy] = sortOrder
+            if (sortBy === 'capacity') {
                 delete sort.capacity
-                sort.capacityNumber = (req.query.sortDesc === 'true') ? -1 : 1
+                sort.capacityNumber = sortOrder
             }
         } else {
             sort.capacityNumber = -1
@@ -254,11 +284,13 @@ router.get('/resignedMNs', [
 
         const sort = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
+        const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_CANDIDATE_SORT_FIELDS, 'capacityNumber')
+        const sortOrder = normalizeSortOrder(req.query.sortDesc)
+        if (sortBy) {
+            sort[sortBy] = sortOrder
+            if (sortBy === 'capacity') {
                 delete sort.capacity
-                sort.capacityNumber = (req.query.sortDesc === 'true') ? -1 : 1
+                sort.capacityNumber = sortOrder
             }
         } else {
             sort.capacityNumber = -1
@@ -431,11 +463,8 @@ router.get('/:candidate/voters', [
     })
 
     const sort = {}
-    if (req.query.sortBy) {
-        sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-    } else {
-        sort.capacityNumber = -1
-    }
+    const sortBy = normalizeSortField(req.query.sortBy, ALLOWED_VOTER_SORT_FIELDS, 'capacityNumber')
+    sort[sortBy] = normalizeSortOrder(req.query.sortDesc)
 
     let voters = await db.Voter.find({
         smartContractAddress: config.get('blockchain.validatorAddress'),
@@ -461,9 +490,9 @@ router.get('/:candidate/rewards', async function (req, res, next) {
     return res.json(rewards)
 })
 
-// for automation test only
 router.post('/apply', async function (req, res, next) {
-    let key = req.query.key
+    return res.status(410).json({ error: { message: 'Deprecated insecure endpoint' } })
+    /* let key = req.query.key
     let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
@@ -513,12 +542,12 @@ router.post('/apply', async function (req, res, next) {
         return res.json({ status: 'OK' })
     } catch (e) {
         return next(e)
-    }
+    } */
 })
 
-// for automation test only
 router.post('/applyBulk', async function (req, res, next) {
-    let key = req.query.key
+    return res.status(410).json({ error: { message: 'Deprecated insecure endpoint' } })
+    /* let key = req.query.key
     let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
@@ -563,12 +592,12 @@ router.post('/applyBulk', async function (req, res, next) {
         return res.json({ status: 'OK' })
     } catch (e) {
         return next(e)
-    }
+    } */
 })
 
-// for automation test only
 router.post('/resign', async function (req, res, next) {
-    let key = req.query.key
+    return res.status(410).json({ error: { message: 'Deprecated insecure endpoint' } })
+    /* let key = req.query.key
     let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
@@ -588,12 +617,12 @@ router.post('/resign', async function (req, res, next) {
         return res.json({ status: 'OK' })
     } catch (e) {
         return res.json({ status: 'NOK' })
-    }
+    } */
 })
 
-// for automation test only
 router.post('/vote', async function (req, res, next) {
-    let key = req.query.key
+    return res.status(410).json({ error: { message: 'Deprecated insecure endpoint' } })
+    /* let key = req.query.key
     let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
@@ -612,12 +641,12 @@ router.post('/vote', async function (req, res, next) {
         return res.json({ status: 'OK', tx: ret.transactionHash })
     } catch (e) {
         return next(e)
-    }
+    } */
 })
 
-// for automation test only
 router.post('/unvote', async function (req, res, next) {
-    let key = req.query.key
+    return res.status(410).json({ error: { message: 'Deprecated insecure endpoint' } })
+    /* let key = req.query.key
     let network = config.get('blockchain.internalRpc')
     const gasPrice = await web3.eth.getGasPrice()
     try {
@@ -635,7 +664,7 @@ router.post('/unvote', async function (req, res, next) {
         return res.json({ status: 'OK' })
     } catch (e) {
         return res.json({ status: 'NOK' })
-    }
+    } */
 })
 
 router.get('/:candidate/isMasternode', async function (req, res, next) {
@@ -762,7 +791,9 @@ router.put('/update', [
     check('name').isLength({ min: 3, max: 30 }).optional().withMessage('Name must be 3 - 30 chars long'),
     check('hardware').isLength({ min: 3, max: 30 }).optional().withMessage('Hardware must be 3 - 30 chars long'),
     check('dcName').isLength({ min: 2, max: 30 }).optional().withMessage('dcName must be 2 - 30 chars long'),
-    check('dcLocation').isLength({ min: 2, max: 30 }).optional().withMessage('dcLocation must be 2 - 30 chars long')
+    check('dcLocation').isLength({ min: 2, max: 30 }).optional().withMessage('dcLocation must be 2 - 30 chars long'),
+    check('signedMessage').isLength({ min: 1 }).exists().withMessage('signedMessage is required'),
+    check('message').isLength({ min: 1 }).exists().withMessage('message is required')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -789,6 +820,13 @@ router.put('/update', [
             set['dataCenter.location'] = body.dcLocation
         }
 
+        if (body.website && !validateUrl(body.website)) {
+            return next(new Error('Invalid website URL'))
+        }
+        if (body.telegram && !validateUrl(body.telegram)) {
+            return next(new Error('Invalid telegram URL'))
+        }
+
         set['socials.website'] = body.website || ''
         set['socials.telegram'] = body.telegram || ''
 
@@ -798,10 +836,7 @@ router.put('/update', [
         }
         console.log('address', address)
 
-        if (
-            address.toLowerCase() === c.candidate.toLowerCase() ||
-            address.toLowerCase() === c.owner.toLowerCase()
-        ) {
+        if (address.toLowerCase() === c.owner.toLowerCase()) {
             if (c.name) {
                 const currentBlockNumber = await web3.eth.getBlockNumber()
                 const data = set

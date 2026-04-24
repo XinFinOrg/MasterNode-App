@@ -33,6 +33,7 @@
                                             v-if="value !== ''"
                                             :href="value"
                                             target="_blank"
+                                            rel="noopener noreferrer"
                                             class="social-links__link">
                                             <i :class="'social-links__icon tm-' + key" />
                                         </a>
@@ -448,7 +449,8 @@
                                                     v-b-tooltip.hover.right
                                                     :href="`${config.explorerUrl}/txs/${data.item.tx}`"
                                                     title="View on XDCScan"
-                                                    target="_blank">
+                                                    target="_blank"
+                                                    rel="noopener noreferrer">
                                                     <i class="tm-eye" />
                                                     <span>View on XDCScan</span>
                                                 </a>

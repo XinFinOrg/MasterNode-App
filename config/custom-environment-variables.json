@@ -16,5 +16,8 @@
   },
   "redis": {
     "host": "REDIS_HOST"
+  },
+  "security": {
+    "ipfsUploadApiKey": "IPFS_UPLOAD_API_KEY"
   }
 }

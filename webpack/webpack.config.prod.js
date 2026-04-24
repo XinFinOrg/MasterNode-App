@@ -13,7 +13,7 @@ const webpackConfig = merge(commonConfig, {
         vendor: ['bignumber.js', 'vue', 'vue-router', 'vuex', 'xdc3']
     },
     target: 'browserslist',
-    devtool: 'source-map',
+    devtool: false,
     output: {
         path: path.resolve(__dirname, '../build'),
         publicPath: '/build/',
@@ -55,7 +55,7 @@ const webpackConfig = merge(commonConfig, {
             minimizer: [
                 new TerserPlugin({
                     terserOptions: {
-                        sourceMap: true,
+                        sourceMap: false,
                         loops: false,
                         compress: {
                             warnings: false

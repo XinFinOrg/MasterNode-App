@@ -20,6 +20,21 @@ const app = express()
 // helmet
 app.use(helmet())
 app.use(helmet.hidePoweredBy())
+app.use(helmet.frameguard({ action: 'deny' }))
+app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }))
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ['\'self\''],
+        scriptSrc: ['\'self\''],
+        styleSrc: ['\'self\'', '\'unsafe-inline\''],
+        imgSrc: ['\'self\'', 'data:', 'https:'],
+        connectSrc: ['\'self\'', 'https:', 'wss:'],
+        objectSrc: ['\'none\''],
+        baseUri: ['\'self\''],
+        frameAncestors: ['\'none\''],
+        formAction: ['\'self\'']
+    }
+}))
 
 // cors
 app.use(cors({

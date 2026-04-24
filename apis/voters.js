@@ -16,6 +16,14 @@ const cache = new LRU({
     max: 1000,
     maxAge: 24 * 60 * 60 * 1000 // 1 day
 })
+const ALLOWED_SORT_FIELDS = new Set(['capacityNumber', 'capacity', 'candidate', 'candidateName', 'status', 'createdAt'])
+
+function normalizeSortField (sortBy) {
+    if (!sortBy || !ALLOWED_SORT_FIELDS.has(sortBy)) {
+        return 'capacityNumber'
+    }
+    return sortBy
+}
 
 router.get('/:voter/candidates', [
     query('limit')
@@ -38,13 +46,9 @@ router.get('/:voter/candidates', [
             capacityNumber: { $ne: 0 }
         })
         const sort = { capacityNumber: -1, _id: 1 }
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            sort._id = 1
-        } else {
-            sort.capacityNumber = -1
-            sort._id = 1
-        }
+        const sortBy = normalizeSortField(req.query.sortBy)
+        sort[sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
+        sort._id = 1
 
         let voters = await db.Voter.find({
             smartContractAddress: config.get('blockchain.validatorAddress'),
