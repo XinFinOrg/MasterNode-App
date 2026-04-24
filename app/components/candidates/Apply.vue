@@ -565,8 +565,30 @@ export default {
 
                     this.loading = true
                     const formData = new FormData()
+                    let signerAccount = (await this.getAccount() || this.account || '').toLowerCase()
+                    if (signerAccount.startsWith('xdc')) {
+                        signerAccount = '0x' + signerAccount.substring(3)
+                    }
+                    const now = new Date().toISOString()
+                    const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
+                    let signedMessage
+                    try {
+                        signedMessage = await this.web3.eth.personal.sign(message, signerAccount, '')
+                    } catch (e) {
+                        signedMessage = await this.web3.eth.sign(message, signerAccount)
+                    }
+
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
-                    const { data } = await axios.post('/api/ipfs/addKYC', formData)
+                    formData.append('account', signerAccount)
+                    formData.append('message', message)
+                    formData.append('signedMessage', signedMessage)
+                    const { data } = await axios.post('/api/ipfs/addKYC', formData, {
+                        headers: {
+                            'x-kyc-account': signerAccount,
+                            'x-kyc-message': message,
+                            'x-kyc-signature': signedMessage
+                        }
+                    })
                     let contract// = await self.getXDCValidatorInstance()
                     contract = self.XDCValidator
                     const currentGasPrice = this.web3.utils.toBN(await this.web3.eth.getGasPrice())

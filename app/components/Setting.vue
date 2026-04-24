@@ -212,7 +212,8 @@
                                 <p>Please install &amp; login
                                     <a
                                         href="https://chrome.google.com/webstore/detail/xdcpay/bocpokimicclpaiekenaeelehdjllofo/"
-                                        target="_blank">XDCPay Extension</a>
+                                        target="_blank"
+                                        rel="noopener noreferrer">XDCPay Extension</a>
                                     then connect it to XDC Network Mainnet or Apothem Testnet.</p>
                             </div>
                             <div
@@ -220,7 +221,8 @@
                                 <p>Please install &amp; login
                                     <a
                                         href="https://xinpay.io/"
-                                        target="_blank">XinPay Extension</a>
+                                        target="_blank"
+                                        rel="noopener noreferrer">XinPay Extension</a>
                                     then connect it to XDC Network Mainnet or Testnet.</p>
                             </div>
                             <div class="buttons text-right">
@@ -283,7 +285,8 @@
                                             <span class="text-muted">
                                                 <a
                                                     :href="`https://kycdocs.xinfin.network/${KYCStatus}`"
-                                                    target="_blank">
+                                                    target="_blank"
+                                                    rel="noopener noreferrer">
                                                     Check here
                                                 </a>
                                             </span>

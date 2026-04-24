@@ -19,7 +19,8 @@
                     Transaction Hash:
                     <a
                         :href="txUrl"
-                        target="_blank">{{ truncate(tx, 30) }}</a>
+                        target="_blank"
+                        rel="noopener noreferrer">{{ truncate(tx, 30) }}</a>
                 </p>
                 <p
                     class="md-content"
@@ -90,8 +91,7 @@ export default {
                         // <router-link to="/candidate/${transaction.candidate}">${transaction.candidate}</router-link>
                         // successfully.
                         // <br/><br/>
-                        // Transaction Hash: <a href="${self.config.explorerUrl}/txs/${self.tx}"
-                        // target="_blank">${self.tx}</a>`
+                        // target="_blank" rel="noopener noreferrer">${self.tx}</a>`
                         self.buttonText = 'View all Candidates'
                     } else {
                         self.icon = 'notice'

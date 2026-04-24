@@ -4,6 +4,14 @@ const router = express.Router()
 const db = require('../models/mongodb')
 const config = require('config')
 const { validationResult, query } = require('express-validator/check')
+const ALLOWED_SORT_FIELDS = new Set(['createdAt', 'capacity', 'event', 'voter', 'candidate'])
+
+function normalizeSortField (sortBy) {
+    if (!sortBy || !ALLOWED_SORT_FIELDS.has(sortBy)) {
+        return 'createdAt'
+    }
+    return sortBy
+}
 
 router.get('/:tx', async function (req, res, next) {
     try {
@@ -39,14 +47,11 @@ router.get('/voter/:voter', [
         const sort = {}
         const collation = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
-                collation.locale = 'en_US'
-                collation.numericOrdering = true
-            }
-        } else {
-            sort.createdAt = -1
+        const sortBy = normalizeSortField(req.query.sortBy)
+        sort[sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
+        if (sortBy === 'capacity') {
+            collation.locale = 'en_US'
+            collation.numericOrdering = true
         }
 
         let txs = await db.Transaction.find({
@@ -99,14 +104,11 @@ router.get('/candidate/:candidate', [
         const sort = {}
         const collation = {}
 
-        if (req.query.sortBy) {
-            sort[req.query.sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
-            if (req.query.sortBy === 'capacity') {
-                collation.locale = 'en_US'
-                collation.numericOrdering = true
-            }
-        } else {
-            sort.createdAt = -1
+        const sortBy = normalizeSortField(req.query.sortBy)
+        sort[sortBy] = (req.query.sortDesc === 'true') ? -1 : 1
+        if (sortBy === 'capacity') {
+            collation.locale = 'en_US'
+            collation.numericOrdering = true
         }
 
         let txs = await db.Transaction.find({

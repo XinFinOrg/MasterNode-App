@@ -4,6 +4,8 @@ const router = express.Router()
 const path = require('path')
 const fs = require('fs')
 const IpfsClient = require('ipfs-http-client')
+const config = require('config')
+const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 
 const xinFinClient = new IpfsClient({
     host: 'ipfs.xinfin.network',
@@ -11,11 +13,72 @@ const xinFinClient = new IpfsClient({
     protocol: 'https'
 })
 
+function toHexAddress (address) {
+    if (!address || typeof address !== 'string') return ''
+    const lower = address.toLowerCase()
+    if (lower.startsWith('xdc')) return '0x' + lower.substring(3)
+    return lower
+}
+
+function normalizeValue (value) {
+    if (value === undefined || value === null) return ''
+    return String(value).trim().replace(/^["']|["']$/g, '')
+}
+
+function unauthorized (res, reason) {
+    const payload = { message: 'Unauthorized' }
+    if (process.env.NODE_ENV === 'development') {
+        payload.reason = reason
+    }
+    return res.status(401).json(payload)
+}
+
 if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
     fs.mkdirSync(path.join(__dirname, '../tmp/'))
 }
 
 router.post('/addKYC', async function (req, res, next) {
+    const expectedApiKey = config.has('security.ipfsUploadApiKey')
+        ? config.get('security.ipfsUploadApiKey')
+        : ''
+    const providedApiKey = req.headers['x-api-key'] || ''
+    const hasValidApiKey = !!expectedApiKey && providedApiKey === expectedApiKey
+
+    if (!hasValidApiKey) {
+        const account = normalizeValue(req.body.account || req.headers['x-kyc-account'] || req.query.account).toLowerCase()
+        const message = normalizeValue(req.body.message || req.headers['x-kyc-message'] || req.query.message)
+        const signedMessage = normalizeValue(req.body.signedMessage || req.headers['x-kyc-signature'] || req.query.signedMessage)
+        if (!account || !message || !signedMessage) {
+            return unauthorized(res, 'missing_auth_fields')
+        }
+
+        let recovered = ''
+        const candidateMessages = [message]
+        try {
+            candidateMessages.push(web3.utils.utf8ToHex(message))
+        } catch (e) {}
+        try {
+            candidateMessages.push(web3.utils.sha3(message))
+        } catch (e) {}
+
+        for (const candidateMessage of candidateMessages) {
+            try {
+                recovered = (await web3.eth.accounts.recover(candidateMessage, signedMessage) || '').toLowerCase()
+                if (recovered) break
+            } catch (e) {}
+        }
+
+        if (!recovered) {
+            return unauthorized(res, 'signature_recover_failed')
+        }
+
+        const recoveredHex = toHexAddress(recovered)
+        const accountHex = toHexAddress(account)
+        if (!recoveredHex || !accountHex || recoveredHex !== accountHex) {
+            return unauthorized(res, 'signer_mismatch')
+        }
+    }
+
     console.log('File Name : ', req.files)
     if (!req.files || !req.files.filename) {
         return res.status(400).json({ message: 'No file uploaded' })
