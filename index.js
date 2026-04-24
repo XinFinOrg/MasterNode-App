@@ -18,23 +18,30 @@ const fileUpload = require('express-fileupload')
 const app = express()
 
 // helmet
-app.use(helmet())
-app.use(helmet.hidePoweredBy())
-app.use(helmet.frameguard({ action: 'deny' }))
-app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }))
-app.use(helmet.contentSecurityPolicy({
-    directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:", "http:"],
-        connectSrc: ["'self'", "https:", "wss:", "http:", "ws:"],
-        fontSrc: ["'self'", "data:", "https:"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        frameAncestors: ["'none'"],
-        formAction: ["'self'"]
-    }
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ['\'self\''],
+            scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\'', 'https://www.google-analytics.com', 'https://www.googletagmanager.com'],
+            styleSrc: ['\'self\'', '\'unsafe-inline\''],
+            imgSrc: ['\'self\'', 'data:', 'https:', 'http:', 'https://www.google-analytics.com'],
+            connectSrc: ['\'self\'', 'https:', 'wss:', 'http:', 'ws:', 'https://www.google-analytics.com'],
+            fontSrc: ['\'self\'', 'data:', 'https:'],
+            objectSrc: ['\'none\''],
+            baseUri: ['\'self\''],
+            frameAncestors: ['\'none\''],
+            formAction: ['\'self\'']
+        }
+    },
+    frameguard: {
+        action: 'deny'
+    },
+    referrerPolicy: {
+        policy: 'strict-origin-when-cross-origin'
+    },
+    xssFilter: true,
+    noSniff: true,
+    hidePoweredBy: true
 }))
 
 // cors
