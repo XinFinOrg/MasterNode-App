@@ -4,7 +4,6 @@ const router = express.Router()
 const path = require('path')
 const fs = require('fs')
 const IpfsClient = require('ipfs-http-client')
-const config = require('config')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 
 const xinFinClient = new IpfsClient({
@@ -38,45 +37,54 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
 }
 
 router.post('/addKYC', async function (req, res, next) {
-    const expectedApiKey = config.has('security.ipfsUploadApiKey')
-        ? config.get('security.ipfsUploadApiKey')
-        : ''
-    const providedApiKey = req.headers['x-api-key'] || ''
-    const hasValidApiKey = !!expectedApiKey && providedApiKey === expectedApiKey
+    const account = normalizeValue(req.body.account || req.headers['x-kyc-account'] || req.query.account).toLowerCase()
+    const message = normalizeValue(req.body.message || req.headers['x-kyc-message'] || req.query.message)
+    const signedMessage = normalizeValue(req.body.signedMessage || req.headers['x-kyc-signature'] || req.query.signedMessage)
 
-    if (!hasValidApiKey) {
-        const account = normalizeValue(req.body.account || req.headers['x-kyc-account'] || req.query.account).toLowerCase()
-        const message = normalizeValue(req.body.message || req.headers['x-kyc-message'] || req.query.message)
-        const signedMessage = normalizeValue(req.body.signedMessage || req.headers['x-kyc-signature'] || req.query.signedMessage)
-        if (!account || !message || !signedMessage) {
-            return unauthorized(res, 'missing_auth_fields')
-        }
+    if (!account || !message || !signedMessage) {
+        return unauthorized(res, 'missing_auth_fields')
+    }
 
-        let recovered = ''
-        const candidateMessages = [message]
+    // 1. Verify Timestamp to prevent Replay Attacks
+    // Message format: "[XDCmaster KYC YYYY-MM-DDTHH:mm:ssZ] Upload KYC for xdc..."
+    const timestampMatch = message.match(/\[XDCmaster KYC (.+?)\]/)
+    if (!timestampMatch) {
+        return unauthorized(res, 'invalid_message_format')
+    }
+
+    const signedTime = new Date(timestampMatch[1]).getTime()
+    const currentTime = new Date().getTime()
+    const fiveMinutes = 5 * 60 * 1000
+
+    if (isNaN(signedTime) || Math.abs(currentTime - signedTime) > fiveMinutes) {
+        return unauthorized(res, 'signature_expired')
+    }
+
+    // 2. Recover Signer
+    let recovered = ''
+    const candidateMessages = [message]
+    try {
+        candidateMessages.push(web3.utils.utf8ToHex(message))
+    } catch (e) {}
+    try {
+        candidateMessages.push(web3.utils.sha3(message))
+    } catch (e) {}
+
+    for (const candidateMessage of candidateMessages) {
         try {
-            candidateMessages.push(web3.utils.utf8ToHex(message))
+            recovered = (await web3.eth.accounts.recover(candidateMessage, signedMessage) || '').toLowerCase()
+            if (recovered) break
         } catch (e) {}
-        try {
-            candidateMessages.push(web3.utils.sha3(message))
-        } catch (e) {}
+    }
 
-        for (const candidateMessage of candidateMessages) {
-            try {
-                recovered = (await web3.eth.accounts.recover(candidateMessage, signedMessage) || '').toLowerCase()
-                if (recovered) break
-            } catch (e) {}
-        }
+    if (!recovered) {
+        return unauthorized(res, 'signature_recover_failed')
+    }
 
-        if (!recovered) {
-            return unauthorized(res, 'signature_recover_failed')
-        }
-
-        const recoveredHex = toHexAddress(recovered)
-        const accountHex = toHexAddress(account)
-        if (!recoveredHex || !accountHex || recoveredHex !== accountHex) {
-            return unauthorized(res, 'signer_mismatch')
-        }
+    const recoveredHex = toHexAddress(recovered)
+    const accountHex = toHexAddress(account)
+    if (!recoveredHex || !accountHex || recoveredHex !== accountHex) {
+        return unauthorized(res, 'signer_mismatch')
     }
 
     console.log('File Name : ', req.files)
