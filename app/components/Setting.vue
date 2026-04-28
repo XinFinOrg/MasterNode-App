@@ -778,15 +778,14 @@ export default {
             // generate qr code
             const { data } = await axios.get('/api/auth/generateLoginQR')
             this.id = data.id
-            // encodeURIComponent (not encodeURI) is required: the server-issued
-            // message now contains "id=<uuid>" to bind the signature to the QR
-            // session (audit fix H-2). encodeURI does not escape "=" so the
-            // mobile wallet's URL parser would split that token into the wrong
-            // query keys.
-            const messageEnc = encodeURIComponent(data.message)
-            const submitURLEnc = encodeURIComponent(data.url)
-            this.qrCode = 'xdcchain:login?message=' + messageEnc + '&submitURL=' + submitURLEnc
-            this.qrCodeApp = 'xdcchain://login?message=' + messageEnc + '&submitURL=' + submitURLEnc
+            this.qrCode = encodeURI(
+                'xdcchain:login?message=' + data.message +
+                '&submitURL=' + data.url
+            )
+            this.qrCodeApp = encodeURI(
+                'xdcchain://login?message=' + data.message +
+                '&submitURL=' + data.url
+            )
             return true
         },
         async getLoginResult () {
