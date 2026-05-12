@@ -28,15 +28,59 @@ import localStorage from 'store'
 // On Ubuntu/Debian: sudo apt-get install build-essential libudev-dev
 // import Transport from '@ledgerhq/hw-transport-node-hid'
 
-// import Transport from '@ledgerhq/hw-transport-u2f' // for browser
 import TransportWebUSB from '@ledgerhq/hw-transport-webusb'
 import Eth from '@ledgerhq/hw-app-eth'
+import openApp from '@ledgerhq/live-common/lib/hw/openApp'
+import getAppAndVersion from '@ledgerhq/live-common/lib/hw/getAppAndVersion'
+import attemptToQuitApp from '@ledgerhq/live-common/lib/hw/attemptToQuitApp'
 import TrezorConnect from 'trezor-connect'
 import Transaction from 'ethereumjs-tx'
 import * as HDKey from 'hdkey'
 import * as ethUtils from 'ethereumjs-util'
 import Meta from 'vue-meta'
 import Helper from './utils'
+
+const LEDGER_APP_NAME = 'Ethereum'
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+const createLedgerEth = async () => {
+    let transport = await TransportWebUSB.create()
+
+    const currentApp = await getAppAndVersion(transport)
+    const openedApp = currentApp.name
+
+    if (openedApp !== 'BOLOS' && openedApp !== LEDGER_APP_NAME) {
+        await attemptToQuitApp(transport, openedApp)
+        await delay(8000)
+        transport = await TransportWebUSB.create()
+    }
+
+    if (openedApp !== LEDGER_APP_NAME) {
+        await openApp(transport, LEDGER_APP_NAME)
+        await delay(2500)
+        transport = await TransportWebUSB.create()
+    }
+
+    return new Eth(transport)
+}
+
+const getLedgerPath = (index = null) => {
+    const config = localStorage.get('configMaster')
+    const networkId = Number(config.blockchain.networkId)
+
+    let basePath
+
+    if (networkId === 50) {
+        basePath = `m/44'/550'/0'/0`
+    } else if (networkId === 51) {
+        basePath = `m/44'/551'/0'/0`
+    } else {
+        basePath = `m/44'/60'/0'/0`
+    }
+
+    return index === null ? basePath : `${basePath}/${index}`
+}
 
 Vue.use(Meta)
 Vue.use(BootstrapVue)
@@ -141,18 +185,16 @@ Vue.prototype.getAccount = async function () {
     case 'ledger':
         try {
             if (!Vue.prototype.appEth) {
-                // let transport = await new Transport()
-                let transport = await TransportWebUSB.create()
-                Vue.prototype.appEth = await new Eth(transport)
+                Vue.prototype.appEth = await createLedgerEth()
             }
             let ethAppConfig = await Vue.prototype.appEth.getAppConfiguration()
             if (!ethAppConfig.arbitraryDataEnabled) {
                 throw new Error(`Please go to App Setting
                     to enable contract data and display data on your device!`)
             }
-            let result = await Vue.prototype.appEth.getAddress(
-                localStorage.get('hdDerivationPath')
-            )
+            const path = getLedgerPath(0)
+
+            let result = await Vue.prototype.appEth.getAddress(path)
             account = result.address
         } catch (error) {
             console.log(error)
@@ -182,13 +224,11 @@ Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
     // let u2fSupported = await Transport.isSupported()
     let u2fSupported = await TransportWebUSB.isSupported()
     if (!u2fSupported) {
-        throw new Error(`U2F not supported in this browser. 
-                Please try using Google Chrome with a secure (SSL / HTTPS) connection!`)
+        throw new Error(`WebUSB not supported in this browser. Please use Google Chrome with HTTPS.`)
     }
     await Vue.prototype.detectNetwork('ledger')
     if (!Vue.prototype.appEth) {
-        let transport = await TransportWebUSB.create()
-        Vue.prototype.appEth = await new Eth(transport)
+        Vue.prototype.appEth = await createLedgerEth()
     }
     const payload = Vue.prototype.ledgerPayload
     let web3 = Vue.prototype.web3
@@ -224,10 +264,9 @@ Vue.prototype.unlockLedger = async () => {
     try {
         if (!Vue.prototype.appEth) {
             // let transport = await Transport.create()
-            let transport = await TransportWebUSB.create()
-            Vue.prototype.appEth = await new Eth(transport)
+            Vue.prototype.appEth = await createLedgerEth()
         }
-        const path = localStorage.get('hdDerivationPath')
+        const path = getLedgerPath()
 
         const result = await Vue.prototype.appEth.getAddress(
             path,
@@ -443,7 +482,8 @@ Vue.prototype.getXDCValidatorInstance = async function () {
  * @return object signature {r, s, v}
  */
 Vue.prototype.signTransaction = async function (txParams) {
-    const path = localStorage.get('hdDerivationPath')
+    const offset = Number(localStorage.get('offset') || 0)
+    const path = getLedgerPath(offset)
     const provider = Vue.prototype.NetworkProvider
     let signature
     if (provider === 'ledger') {
@@ -503,7 +543,8 @@ Vue.prototype.sendSignedTransaction = function (txParams, signature) {
 
 Vue.prototype.signMessage = async function (message) {
     try {
-        const path = localStorage.get('hdDerivationPath')
+        const offset = Number(localStorage.get('offset') || 0)
+        const path = getLedgerPath(offset)
         const provider = Vue.prototype.NetworkProvider
         let result
         switch (provider) {

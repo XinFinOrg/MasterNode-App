@@ -122,6 +122,9 @@
                                         @click="changePath(`m/44'/60'/0'`)">m/44'/60'/0'</code> or
                                     <code
                                         class="hd-path"
+                                        @click="changePath(`m/44'/550'/0'/0`)">m/44'/550'/0'/0</code> or
+                                    <code
+                                        class="hd-path"
                                         @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code></small>
                             </b-form-group>
 
@@ -186,7 +189,9 @@
                                     with Ethereum App,<br>
                                     or try path <code
                                         class="hd-path"
-                                        @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code>
+                                        @click="changePath(`m/44'/550'/0'/0`)">m/44'/550'/0'/0</code> or <code
+                                            class="hd-path"
+                                            @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code>
                                     with XDC Network App (on Ledger).</small>
                             </b-form-group>
 
@@ -461,7 +466,7 @@ export default {
         return {
             isReady: !!this.web3,
             mnemonic: '',
-            hdPath: "m/44'/551'/0'/0", // HD DerivationPath of hardware wallet
+            hdPath: "m/44'/550'/0'/0", // HD DerivationPath of hardware wallet
             hdWallets: {}, // list of addresses in hardware wallet
             config: {},
             provider: 'metamask',
@@ -812,7 +817,7 @@ export default {
                 this.hdPath = "m/44'/60'/0'/0"
                 break
             case 'ledger':
-                this.hdPath = "m/44'/551'/0'/0"
+                this.hdPath = store.get('hdDerivationPath') || this.hdPath
                 break
             default:
                 if (this.interval) {
