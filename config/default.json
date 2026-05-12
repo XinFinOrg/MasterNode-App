@@ -30,6 +30,7 @@
     "db": {
         "uri": "mongodb://mongodb:27017/governance"
     },
+    "_comment_db": "Prefer setting MONGO_URI environment variable for authenticated connections (e.g. MONGO_URI=mongodb://user:pass@host:port/db)",
     "explorerUrl": "http://localhost:3003",
     "XDCscanUrl": "https://scan.testnet.xinfin.network",
     "baseUrl": "https://master.testnet.xinfin.network/",
@@ -44,9 +45,9 @@
     },
     "GA": "UA-124427827-2",
     "twitter": {
-        "consumer_key": "twittter-consumer-api-key",
-        "consumer_secret": "twittter-consumer-api-secret-key",
-        "access_token_key": "twittter-access-token-key",
-        "access_token_secret": "twittter-access-token-secret-key"
+        "consumer_key": "",
+        "consumer_secret": "",
+        "access_token_key": "",
+        "access_token_secret": ""
     }
 }

@@ -1,21 +1,30 @@
 'use strict'
 const express = require('express')
-const axios = require('axios')
+// eslint-disable-next-line no-unused-vars
+const axios = require('axios') // used by /getRewards once the XDCscan call is re-enabled
 const router = express.Router()
 const db = require('../models/mongodb')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const validator = require('../models/blockchain/validatorRpc')
 const config = require('config')
 const _ = require('lodash')
+const escapeRegExp = require('lodash.escaperegexp')
 const logger = require('../helpers/logger')
 const { check, validationResult, query } = require('express-validator/check')
 const uuidv4 = require('uuid/v4')
 const urljoin = require('url-join')
+const { mutationLimiter } = require('../helpers/rateLimiters')
 
 // const gas = config.get('blockchain.gas')
 const ALLOWED_CANDIDATE_SORT_FIELDS = new Set(['capacity', 'capacityNumber', 'name', 'status', 'rank', 'latestSignedBlock', 'createdAt'])
 const ALLOWED_VOTER_SORT_FIELDS = new Set(['capacityNumber', 'capacity', 'voter', 'createdAt'])
 const ALLOWED_SCHEMES = ['https:', 'http:']
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const HEX_ADDR_CSV = /^(xdc|0x)?[0-9a-fA-F]{40}(,(xdc|0x)?[0-9a-fA-F]{40})*$/
+
+function isValidUuid (id) {
+    return typeof id === 'string' && UUID_V4_REGEX.test(id)
+}
 
 function validateUrl (url) {
     try {
@@ -311,20 +320,24 @@ router.get('/resignedMNs', [
 })
 
 router.post('/listByHash', [
-    check('hashes').exists().withMessage('Missing hashes params')
+    check('hashes')
+        .exists().withMessage('Missing hashes params')
+        .isString().withMessage('hashes must be a comma-separated string')
+        .matches(HEX_ADDR_CSV).withMessage('hashes must be comma-separated hex addresses')
+        .isLength({ max: 8192 }).withMessage('hashes list too large')
 ], async function (req, res, next) {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
         return next(errors.array())
     }
-    let hashes = req.body.hashes
-    let listHash = hashes.split(',')
+    // Split and cap the list length defensively even after validator passes.
+    const listHash = String(req.body.hashes).split(',').slice(0, 200)
 
     try {
         let candidates = await db.Candidate.find({ candidate: { $in: listHash } })
         return res.json(candidates)
     } catch (e) {
-        logger.warn('Cannot get list candidate by hash. Error %s', e)
+        logger.warn('Cannot get list candidate by hash. Error %s', e.message || e)
         return next(e)
     }
 })
@@ -379,11 +392,14 @@ router.get('/search', [
                 items: data
             })
         } else {
+            // Escape regex metacharacters to prevent ReDoS (catastrophic
+            // backtracking) against MongoDB. Trim length defensively as well.
+            const safeQuery = escapeRegExp(String(query).slice(0, 100))
             const total = db.Candidate.count({
-                name: { $regex: query, $options: 'i' }
+                name: { $regex: safeQuery, $options: 'i' }
             })
             const data = await db.Candidate.find({
-                name: { $regex: query, $options: 'i' }
+                name: { $regex: safeQuery, $options: 'i' }
             }).limit(limit).skip(skip).lean().exec()
             return res.json({
                 total: await total,
@@ -790,7 +806,7 @@ router.get('/:candidate/:owner/getRewards', [
 })
 
 // Update masternode info
-router.put('/update', [
+router.put('/update', mutationLimiter, [
     check('name').isLength({ min: 3, max: 30 }).optional().withMessage('Name must be 3 - 30 chars long'),
     check('hardware').isLength({ min: 3, max: 30 }).optional().withMessage('Hardware must be 3 - 30 chars long'),
     check('dcName').isLength({ min: 2, max: 30 }).optional().withMessage('dcName must be 2 - 30 chars long'),
@@ -920,12 +936,10 @@ router.post('/:candidate/generateMessage', [
 })
 
 router.post('/verifyScannedQR', [
-    query('id').isLength({ min: 1 }).exists().withMessage('id is required')
-        .contains('-').withMessage('wrong id format'),
-    check('message').isLength({ min: 1 }).exists().withMessage('message is required'),
-    check('signature').isLength({ min: 1 }).exists().withMessage('signature is required'),
-    check('signer').isLength({ min: 1 }).exists().withMessage('signer is required'),
-    check('message').isLength({ min: 1 }).exists().withMessage('message is required')
+    query('id').isUUID(4).withMessage('id must be a UUID v4'),
+    check('message').isLength({ min: 1, max: 2048 }).exists().withMessage('message is required'),
+    check('signature').isLength({ min: 1, max: 256 }).exists().withMessage('signature is required'),
+    check('signer').isLength({ min: 1, max: 128 }).exists().withMessage('signer is required')
 ], async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -934,7 +948,16 @@ router.post('/verifyScannedQR', [
     try {
         const message = req.body.message
         const signature = req.body.signature
-        const id = escape(req.query.id)
+        const id = req.query.id
+        // Defense in depth: express-validator's isUUID(4) above already
+        // rejected non-UUIDv4 ids, but we re-check with the same regex
+        // (UUID_V4_REGEX) before it reaches the DB so that a future change
+        // to the validator chain (or a misconfiguration that drops the
+        // check from the pipeline) cannot reintroduce arbitrary-string
+        // querying against the Signature collection (CodeRabbit #49).
+        if (!isValidUuid(id)) {
+            throw Error('wrong id format')
+        }
         let signer = req.body.signer.toLowerCase()
 
         const checkId = await db.Signature.findOne({ signedId: id })
@@ -963,22 +986,24 @@ router.post('/verifyScannedQR', [
 
         return res.send('Done')
     } catch (e) {
-        console.trace(e)
-        console.log(e)
+        logger.warn('verifyScannedQR failed: %s', e.message || e)
         return next(e)
     }
 })
 
 router.get('/:candidate/getSignature', [
-    query('id').isLength({ min: 1 }).exists().withMessage('id is required')
-        .contains('-').withMessage('wrong id format')
+    query('id').isUUID(4).withMessage('id must be a UUID v4')
 ], async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
         return next(errors.array())
     }
     try {
-        const messId = escape(req.query.id)
+        const messId = req.query.id
+        // Defense in depth — see comment in /verifyScannedQR above.
+        if (!isValidUuid(messId)) {
+            return next(new Error('wrong id format'))
+        }
 
         const signature = await db.Signature.findOne({ signedId: messId })
 

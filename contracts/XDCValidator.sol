@@ -1,9 +1,6 @@
-pragma solidity ^0.4.21;
-
-import "./libs/SafeMath.sol";
+pragma solidity ^0.8.0;
 
 contract XDCValidator {
-    using SafeMath for uint256;
 
     event Vote(address _voter, address _candidate, uint256 _cap);
     event Unvote(address _voter, address _candidate, uint256 _cap);
@@ -70,7 +67,7 @@ contract XDCValidator {
     modifier onlyValidVote (address _candidate, uint256 _cap) {
         require(validatorsState[_candidate].voters[msg.sender] >= _cap);
         if (validatorsState[_candidate].owner == msg.sender) {
-            require(validatorsState[_candidate].voters[msg.sender].sub(_cap) >= minCandidateCap);
+            require(validatorsState[_candidate].voters[msg.sender] - _cap >= minCandidateCap);
         }
         _;
     }
@@ -83,16 +80,16 @@ contract XDCValidator {
         _;
     }
 
-    function XDCValidator (
-        address[] _candidates,
-        uint256[] _caps,
+    constructor (
+        address[] memory _candidates,
+        uint256[] memory _caps,
         address _firstOwner,
         uint256 _minCandidateCap,
         uint256 _minVoterCap,
         uint256 _maxValidatorNumber,
         uint256 _candidateWithdrawDelay,
         uint256 _voterWithdrawDelay
-    ) public {
+    ) {
         minCandidateCap = _minCandidateCap;
         minVoterCap = _minVoterCap;
         maxValidatorNumber = _maxValidatorNumber;
@@ -102,40 +99,36 @@ contract XDCValidator {
 
         for (uint256 i = 0; i < _candidates.length; i++) {
             candidates.push(_candidates[i]);
-            validatorsState[_candidates[i]] = ValidatorState({
-                owner: _firstOwner,
-                isCandidate: true,
-                cap: _caps[i]
-            });
+            validatorsState[_candidates[i]].owner = _firstOwner;
+            validatorsState[_candidates[i]].isCandidate = true;
+            validatorsState[_candidates[i]].cap = _caps[i];
             voters[_candidates[i]].push(_firstOwner);
             validatorsState[_candidates[i]].voters[_firstOwner] = minCandidateCap;
         }
     }
 
     function propose(address _candidate) external payable onlyValidCandidateCap onlyNotCandidate(_candidate) {
-        uint256 cap = validatorsState[_candidate].cap.add(msg.value);
+        uint256 cap = validatorsState[_candidate].cap + msg.value;
         candidates.push(_candidate);
-        validatorsState[_candidate] = ValidatorState({
-            owner: msg.sender,
-            isCandidate: true,
-            cap: cap
-        });
-        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender].add(msg.value);
-        candidateCount = candidateCount.add(1);
+        validatorsState[_candidate].owner = msg.sender;
+        validatorsState[_candidate].isCandidate = true;
+        validatorsState[_candidate].cap = cap;
+        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender] + msg.value;
+        candidateCount = candidateCount + 1;
         voters[_candidate].push(msg.sender);
         emit Propose(msg.sender, _candidate, msg.value);
     }
 
     function vote(address _candidate) external payable onlyValidVoterCap onlyValidCandidate(_candidate) {
-        validatorsState[_candidate].cap = validatorsState[_candidate].cap.add(msg.value);
+        validatorsState[_candidate].cap = validatorsState[_candidate].cap + msg.value;
         if (validatorsState[_candidate].voters[msg.sender] == 0) {
             voters[_candidate].push(msg.sender);
         }
-        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender].add(msg.value);
+        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender] + msg.value;
         emit Vote(msg.sender, _candidate, msg.value);
     }
 
-    function getCandidates() public view returns(address[]) {
+    function getCandidates() public view returns(address[] memory) {
         return candidates;
     }
 
@@ -151,7 +144,7 @@ contract XDCValidator {
         return validatorsState[_candidate].voters[_voter];
     }
 
-    function getVoters(address _candidate) public view returns(address[]) {
+    function getVoters(address _candidate) public view returns(address[] memory) {
         return voters[_candidate];
     }
 
@@ -159,7 +152,7 @@ contract XDCValidator {
         return validatorsState[_candidate].isCandidate;
     }
 
-    function getWithdrawBlockNumbers() public view returns(uint256[]) {
+    function getWithdrawBlockNumbers() public view returns(uint256[] memory) {
         return withdrawsState[msg.sender].blockNumbers;
     }
 
@@ -168,12 +161,12 @@ contract XDCValidator {
     }
 
     function unvote(address _candidate, uint256 _cap) public onlyValidVote(_candidate, _cap) {
-        validatorsState[_candidate].cap = validatorsState[_candidate].cap.sub(_cap);
-        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender].sub(_cap);
+        validatorsState[_candidate].cap = validatorsState[_candidate].cap - _cap;
+        validatorsState[_candidate].voters[msg.sender] = validatorsState[_candidate].voters[msg.sender] - _cap;
 
         // refund after delay X blocks
-        uint256 withdrawBlockNumber = voterWithdrawDelay.add(block.number);
-        withdrawsState[msg.sender].caps[withdrawBlockNumber] = withdrawsState[msg.sender].caps[withdrawBlockNumber].add(_cap);
+        uint256 withdrawBlockNumber = voterWithdrawDelay + block.number;
+        withdrawsState[msg.sender].caps[withdrawBlockNumber] = withdrawsState[msg.sender].caps[withdrawBlockNumber] + _cap;
         withdrawsState[msg.sender].blockNumbers.push(withdrawBlockNumber);
 
         emit Unvote(msg.sender, _candidate, _cap);
@@ -181,7 +174,7 @@ contract XDCValidator {
 
     function resign(address _candidate) public onlyOwner(_candidate) onlyCandidate(_candidate) {
         validatorsState[_candidate].isCandidate = false;
-        candidateCount = candidateCount.sub(1);
+        candidateCount = candidateCount - 1;
         for (uint256 i = 0; i < candidates.length; i++) {
             if (candidates[i] == _candidate) {
                 delete candidates[i];
@@ -189,11 +182,11 @@ contract XDCValidator {
             }
         }
         uint256 cap = validatorsState[_candidate].voters[msg.sender];
-        validatorsState[_candidate].cap = validatorsState[_candidate].cap.sub(cap);
+        validatorsState[_candidate].cap = validatorsState[_candidate].cap - cap;
         validatorsState[_candidate].voters[msg.sender] = 0;
         // refunding after resigning X blocks
-        uint256 withdrawBlockNumber = candidateWithdrawDelay.add(block.number);
-        withdrawsState[msg.sender].caps[withdrawBlockNumber] = withdrawsState[msg.sender].caps[withdrawBlockNumber].add(cap);
+        uint256 withdrawBlockNumber = candidateWithdrawDelay + block.number;
+        withdrawsState[msg.sender].caps[withdrawBlockNumber] = withdrawsState[msg.sender].caps[withdrawBlockNumber] + cap;
         withdrawsState[msg.sender].blockNumbers.push(withdrawBlockNumber);
         emit Resign(msg.sender, _candidate);
     }
@@ -202,7 +195,7 @@ contract XDCValidator {
         uint256 cap = withdrawsState[msg.sender].caps[_blockNumber];
         delete withdrawsState[msg.sender].caps[_blockNumber];
         delete withdrawsState[msg.sender].blockNumbers[_index];
-        msg.sender.transfer(cap);
+        payable(msg.sender).transfer(cap);
         emit Withdraw(msg.sender, _blockNumber, cap);
     }
 }

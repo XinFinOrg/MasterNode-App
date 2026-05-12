@@ -569,8 +569,45 @@ export default {
                     if (signerAccount.startsWith('xdc')) {
                         signerAccount = '0x' + signerAccount.substring(3)
                     }
-                    const now = new Date().toISOString()
-                    const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
+
+                    // Two-step KYC upload (audit fix M-9). The signature must be
+                    // bound to the actual file contents AND a server-issued
+                    // single-use nonce, otherwise an attacker who captured one
+                    // valid signed message could substitute any other file.
+                    //
+                    // Step 1: hash the file in the browser. The Web Crypto
+                    // SubtleCrypto API is only exposed in "secure contexts"
+                    // (HTTPS or localhost). When the SPA is served over plain
+                    // HTTP — which still happens in some on-prem mirrors —
+                    // window.crypto.subtle is undefined and digest() throws an
+                    // opaque TypeError that the user sees as a stuck spinner.
+                    // Surface a readable error instead (CodeRabbit #49).
+                    if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== 'function') {
+                        this.loading = false
+                        const msg = 'KYC upload requires a secure context (HTTPS or localhost). Please retry over HTTPS.'
+                        this.$toasted.show(msg)
+                        throw new Error(msg)
+                    }
+                    const fileBuffer = await this.KYC.file.arrayBuffer()
+                    const digestBuffer = await window.crypto.subtle.digest('SHA-256', fileBuffer)
+                    const fileHash = '0x' + Array.from(new Uint8Array(digestBuffer))
+                        .map(b => b.toString(16).padStart(2, '0')).join('')
+
+                    // Step 2: ask the server to mint a one-time nonce for this account.
+                    const nonceRes = await axios.post('/api/ipfs/requestKYCNonce', {
+                        account: signerAccount
+                    })
+                    const nonce = nonceRes && nonceRes.data && nonceRes.data.nonce
+                    if (!nonce) {
+                        throw new Error('Failed to obtain KYC upload nonce')
+                    }
+
+                    // Step 3: build the exact string the server will rebuild from
+                    // the uploaded bytes, then sign it. Keeping the literal
+                    // template here (rather than blindly substituting whatever
+                    // the server returned) prevents a malicious response from
+                    // tricking the wallet into signing something else.
+                    const message = `[XDCmaster KYC ${nonce}] Upload ${fileHash} for ${signerAccount}`
                     let signedMessage
                     try {
                         signedMessage = await this.web3.eth.personal.sign(message, signerAccount, '')
@@ -580,12 +617,12 @@ export default {
 
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
                     formData.append('account', signerAccount)
-                    formData.append('message', message)
+                    formData.append('nonce', nonce)
                     formData.append('signedMessage', signedMessage)
                     const { data } = await axios.post('/api/ipfs/addKYC', formData, {
                         headers: {
                             'x-kyc-account': signerAccount,
-                            'x-kyc-message': message,
+                            'x-kyc-nonce': nonce,
                             'x-kyc-signature': signedMessage
                         }
                     })

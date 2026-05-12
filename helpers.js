@@ -10,6 +10,12 @@ const RpcSubprovider = require('web3-provider-engine/subproviders/rpc.js')
 const Transaction = require('ethereumjs-tx')
 const ethUtil = require('ethereumjs-util')
 
+/**
+ * SECURITY WARNING (Audit Finding C-3):
+ * This provider stores the mnemonic and derived private keys in memory.
+ * This is insecure if the browser environment is compromised (e.g. via XSS).
+ * The 'PrivateKey/MNEMONIC' login path has been disabled in the UI to mitigate this.
+ */
 /* eslint-disable */
 
 function HDWalletProvider (

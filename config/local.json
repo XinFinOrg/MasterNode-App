@@ -7,7 +7,11 @@
         "level": "debug"
     },
     "cors": [
-        "https://swagger.apothem.network"
+        "https://swagger.apothem.network",
+        "https://localhost:5000",
+        "http://localhost:5000",
+        "https://127.0.0.1:5000",
+        "http://127.0.0.1:5000"
     ],
     "blockchain": {
         "walletconnectProjectId":"0000000000000000000000000000000000000",

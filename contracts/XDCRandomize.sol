@@ -1,17 +1,14 @@
-pragma solidity ^0.4.21;
-
-import "./libs/SafeMath.sol";
+pragma solidity ^0.8.0;
 
 contract XDCRandomize {
-    using SafeMath for uint256;
 
     mapping (address=>bytes32[]) randomSecret;
     mapping (address=>bytes32) randomOpening;
 
-    function XDCRandomize () public {
+    constructor () {
     }
 
-    function setSecret(bytes32[] _secret) public {
+    function setSecret(bytes32[] memory _secret) public {
         uint secretPoint =  block.number % 900;
         require(secretPoint >= 800);
         require(secretPoint < 850);
@@ -24,7 +21,7 @@ contract XDCRandomize {
         randomOpening[msg.sender] = _opening;
     }
 
-    function getSecret(address _validator) public view returns(bytes32[]) {
+    function getSecret(address _validator) public view returns(bytes32[] memory) {
         return randomSecret[_validator];
     }
 

@@ -1,4 +1,8 @@
 *.pem
+*.key
+*.crt
+*.p12
+*.pfx
 .*.sw*
 node_modules
 .vscode/
@@ -6,8 +10,14 @@ node_modules
 .idea/
 .node-xmlhttprequest*
 .env
+.env.*
+!.env.example
 coverage
 coverage.json
 .DS_Store
 package-lock.json
 /db
+/tmp
+/sslcert/*
+!/sslcert/README.md
+/travis.pem.enc

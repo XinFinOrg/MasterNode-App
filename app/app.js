@@ -581,10 +581,15 @@ const EventBus = new Vue()
 
 Vue.prototype.$bus = EventBus
 
+// Mount via an explicit render function rather than a runtime-compiled
+// `template: '<App/>'`. With webpack 5 + terser the runtime compiler in
+// vue.esm.js was getting tree-shaken in production builds, leaving the root
+// instance unable to resolve the `<App/>` placeholder and rendering an empty
+// comment node. A render function is statically analysable, never DCE'd, and
+// produces the same VNode tree as the template form.
 new Vue({ // eslint-disable-line no-new
     el: '#app',
     store,
     router: router,
-    components: { App },
-    template: '<App/>'
+    render: h => h(App)
 })

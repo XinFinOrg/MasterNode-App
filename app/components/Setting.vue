@@ -54,8 +54,8 @@
                                         <option value="connect-wallet">WalletConnect v2</option>
                                         <!-- <option
                                             value="XDCwallet">XDCWallet (Recommended)</option> -->
-                                        <option
-                                            value="custom">PrivateKey/MNEMONIC</option>
+                                        <!-- <option
+                                            value="custom">PrivateKey/MNEMONIC</option> -->
                                         <option
                                             value="ledger">Ledger Wallet</option>
                                         <option
@@ -85,7 +85,7 @@
                                     v-else-if="$v.networks.custom.$dirty && !$v.networks.custom.localhostUrl"
                                     class="text-danger">Wrong URL format</span>
                             </b-form-group> -->
-                            <b-form-group
+                            <!-- <b-form-group
                                 v-if="provider === 'custom'"
                                 class="mb-4"
                                 label="Privatekey/MNEMONIC"
@@ -98,8 +98,8 @@
                                 <span
                                     v-if="$v.mnemonic.$dirty && !$v.mnemonic.required"
                                     class="text-danger">Required field</span>
-                            </b-form-group>
-                            <b-form-group
+                            </b-form-group> -->
+                            <!-- <b-form-group
                                 v-if="provider === 'custom'"
                                 class="mb-4"
                                 label="Select HD derivation path(MNEMONIC)"
@@ -126,7 +126,7 @@
                                     <code
                                         class="hd-path"
                                         @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code></small>
-                            </b-form-group>
+                            </b-form-group> -->
 
                             <b-form-group
                                 v-if="provider === 'XDCwallet'"
@@ -454,7 +454,7 @@ import store from 'store'
 import Helper from '../utils'
 // const HDWalletProvider = require('truffle-hdwallet-provider')
 const { HDWalletProvider } = require('../../helpers')
-const PrivateKeyProvider = require('truffle-privatekey-provider')
+// const PrivateKeyProvider = require('truffle-privatekey-provider')
 const defaultWalletNumber = 10
 export default {
     name: 'App',
@@ -650,9 +650,9 @@ export default {
             }
 
             this.$v.$touch()
-            if (this.provider === 'custom' && !this.$v.mnemonic.$invalid) {
+            /* if (this.provider === 'custom' && !this.$v.mnemonic.$invalid) {
                 this.save()
-            }
+            } */
             if (this.provider === 'ledger' && !this.$v.hdPath.$invalid) {
                 this.selectHdPath()
             }
@@ -747,7 +747,7 @@ export default {
                     store.set('hdDerivationPath', self.hdPath + '/' + offset)
                     store.set('offset', offset)
                     break
-                default:
+                /* default:
                     self.mnemonic = self.mnemonic.trim()
                     const walletProvider =
                         (self.mnemonic.indexOf(' ') >= 0)
@@ -756,7 +756,7 @@ export default {
                                 self.chainConfig.rpc, 0, 1, self.hdPath)
                             : new PrivateKeyProvider(self.mnemonic, self.chainConfig.rpc)
                     wjs = new Web3(walletProvider)
-                    break
+                    break */
                 }
                 await self.setupProvider(this.provider, wjs)
                 await self.setupAccount()
@@ -783,14 +783,15 @@ export default {
             // generate qr code
             const { data } = await axios.get('/api/auth/generateLoginQR')
             this.id = data.id
-            this.qrCode = encodeURI(
-                'xdcchain:login?message=' + data.message +
-                '&submitURL=' + data.url
-            )
-            this.qrCodeApp = encodeURI(
-                'xdcchain://login?message=' + data.message +
-                '&submitURL=' + data.url
-            )
+            // encodeURIComponent (not encodeURI) is required: the server-issued
+            // message now contains "id=<uuid>" to bind the signature to the QR
+            // session (audit fix H-2). encodeURI does not escape "=" so the
+            // mobile wallet's URL parser would split that token into the wrong
+            // query keys.
+            const messageEnc = encodeURIComponent(data.message)
+            const submitURLEnc = encodeURIComponent(data.url)
+            this.qrCode = 'xdcchain:login?message=' + messageEnc + '&submitURL=' + submitURLEnc
+            this.qrCodeApp = 'xdcchain://login?message=' + messageEnc + '&submitURL=' + submitURLEnc
             return true
         },
         async getLoginResult () {
