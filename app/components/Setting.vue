@@ -13,9 +13,9 @@
                             <h4 class="h4 color-black">Address</h4>
                             <p>
                                 <router-link
-                                    :to="`/voter/xdc${address.substring(2)}`"
+                                    :to="getVoterLinkPath(address)"
                                     class="text-truncate">
-                                    {{ 'xdc' + address.substring(2) }}
+                                    {{ getDisplayAddress(address) }}
                                 </router-link>
                             </p>
                         </div>
@@ -189,9 +189,10 @@
                                     with Ethereum App,<br>
                                     or try path <code
                                         class="hd-path"
-                                        @click="changePath(`m/44'/550'/0'/0`)">m/44'/550'/0'/0</code> or <code
-                                            class="hd-path"
-                                            @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code>
+                                        @click="changePath(`m/44'/550'/0'/0`)">m/44'/550'/0'/0</code>
+                                    <!-- or <code
+                                        class="hd-path"
+                                        @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code> -->
                                     with XDC Network App (on Ledger).</small>
                             </b-form-group>
 
@@ -234,7 +235,9 @@
                                 <b-button
                                     v-if="provider !== 'XDCwallet'"
                                     type="submit"
-                                    variant="primary">Save</b-button>
+                                    variant="primary">
+                                    {{ (provider === 'ledger' || provider === 'trezor') ? 'Connect wallet' : 'Save' }}
+                                </b-button>
                             </div>
                         </b-form>
                     </b-card>
@@ -258,9 +261,9 @@
                                     <i class="tm-wallet XDC-list__icon" />
                                     <p class="XDC-list__text">
                                         <router-link
-                                            :to="`/voter/xdc${address.substring(2)}`"
+                                            :to="getVoterLinkPath(address)"
                                             class="text-truncate">
-                                            {{ 'xdc' + address.substring(2) }}
+                                            {{ getDisplayAddress(address) }}
                                         </router-link>
                                         <span>Address</span>
                                     </p>
@@ -369,72 +372,82 @@
                 </b-row>
             </div>
             <div
+                v-show="showHdWalletModal"
                 id="hdwalletModal"
-                class="XDC-modal-light"
-                style="display: none;">
-                <div
-                    class="modal-backdrop">
-                    <div class="modal" >
-                        <header class="modal-header">
-                            <slot name="header">
+                class="XDC-hd-wallet-modal"
+                @click.self="closeModal">
+                <div class="XDC-hd-wallet-modal__dialog">
+                    <header class="XDC-hd-wallet-modal__header">
+                        <div>
+                            <h4 class="XDC-hd-wallet-modal__title">Select wallet</h4>
+                            <p class="XDC-hd-wallet-modal__subtitle">
                                 Please select the address you would like to interact with
-                                <button
-                                    type="button"
-                                    class="close"
-                                    @click="closeModal"
-                                >
-                                    x
-                                </button>
-                            </slot>
-                        </header>
-                        <section class="modal-body">
-                            <slot name="hdAddress">
-                                <div
-                                    v-for="(hdwallet, index) in hdWallets"
-                                    :key="index">
-                                    <label style="width: 100%; margin-bottom: 5px; line-height: 16px; cursor: pointer">
-                                        <input
-                                            :value="index"
-                                            name="hdWallet"
-                                            type="radio"
-                                            autocomplete="off"
-                                            style="width: 5%; float: left" >
-                                        <div style="width: 70%; float: left">
-                                            {{ hdwallet.address }}
-                                        </div>
-                                        <div style="width: 20%; margin-left: 2%; float: left">
-                                            {{ hdwallet.balance }} {{ getCurrencySymbol() }}
-                                        </div>
-                                    </label>
-                                </div>
-                                <div
-                                    id="moreHdAddresses"
-                                    style="margin-top: 10px; cursor: pointer"
-                                    @click="moreHdAddresses">
-                                    More Addresses
-                                </div>
-                            </slot>
-                        </section>
-                        <footer class="modal-footer">
-                            <slot name="footer">
-                                <button
-                                    type="button"
-                                    class="btn btn-secondary"
-                                    @click="closeModal"
-                                >
-                                    Cancel
-                                </button>
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="XDC-hd-wallet-modal__close"
+                            aria-label="Close"
+                            @click="closeModal" />
+                    </header>
 
-                                <button
-                                    type="button"
-                                    class="btn btn-primary"
-                                    @click="setHdPath"
-                                >
-                                    Unlock your wallet
-                                </button>
-                            </slot>
-                        </footer>
-                    </div>
+                    <section class="XDC-hd-wallet-modal__body">
+                        <ul class="XDC-hd-wallet-modal__list list-unstyled">
+                            <li
+                                v-for="(hdwallet, index) in hdWallets"
+                                :key="index"
+                                :class="[
+                                    'XDC-hd-wallet-modal__item',
+                                    { 'XDC-hd-wallet-modal__item--active': selectedHdWalletIndex === String(index) }
+                                ]"
+                                @click="selectedHdWalletIndex = String(index)">
+                                <label class="XDC-hd-wallet-modal__label">
+                                    <input
+                                        v-model="selectedHdWalletIndex"
+                                        :value="String(index)"
+                                        name="hdWallet"
+                                        type="radio"
+                                        class="XDC-hd-wallet-modal__radio"
+                                        autocomplete="off">
+                                    <span class="XDC-hd-wallet-modal__radio-ui" />
+                                    <span class="XDC-hd-wallet-modal__details">
+                                        <span class="XDC-hd-wallet-modal__address">
+                                            {{ formatWalletAddress(hdwallet.address) }}
+                                        </span>
+                                        <span class="XDC-hd-wallet-modal__balance-label">Balance</span>
+                                    </span>
+                                    <span class="XDC-hd-wallet-modal__balance">
+                                        {{ hdwallet.balance }}
+                                        <span class="XDC-hd-wallet-modal__symbol">
+                                            {{ getCurrencySymbolByHdPath(hdPath) }}
+                                        </span>
+                                    </span>
+                                </label>
+                            </li>
+                        </ul>
+
+                        <button
+                            :disabled="loadingMoreHdAddresses"
+                            type="button"
+                            class="XDC-hd-wallet-modal__more"
+                            @click="moreHdAddresses">
+                            <span v-if="loadingMoreHdAddresses">Loading addresses...</span>
+                            <span v-else>Load more addresses</span>
+                        </button>
+                    </section>
+
+                    <footer class="XDC-hd-wallet-modal__footer">
+                        <b-button
+                            variant="outline-secondary"
+                            @click="closeModal">
+                            Cancel
+                        </b-button>
+                        <b-button
+                            variant="primary"
+                            @click="setHdPath">
+                            Unlock wallet
+                        </b-button>
+                    </footer>
                 </div>
             </div>
         </div>
@@ -468,6 +481,9 @@ export default {
             mnemonic: '',
             hdPath: "m/44'/550'/0'/0", // HD DerivationPath of hardware wallet
             hdWallets: {}, // list of addresses in hardware wallet
+            showHdWalletModal: false,
+            selectedHdWalletIndex: '0',
+            loadingMoreHdAddresses: false,
             config: {},
             provider: 'metamask',
             address: '',
@@ -667,29 +683,74 @@ export default {
             try {
                 self.loading = true
                 store.set('hdDerivationPath', self.hdPath)
+                if (offset === 0) {
+                    store.remove('ledgerDevicePath')
+                    self.hdWallets = {}
+                    self.selectedHdWalletIndex = '0'
+                }
                 if (self.provider === 'trezor') {
                     await self.unlockTrezor()
                     wallets = await self.loadTrezorWallets(offset, limit)
                 } else {
                     await self.unlockLedger()
+                    const ledgerFallback = store.get('ledgerPathFallbackMessage')
+                    if (ledgerFallback) {
+                        self.$toasted.show(ledgerFallback, { type: 'info' })
+                        store.remove('ledgerPathFallbackMessage')
+                    }
                     wallets = await self.loadMultipleLedgerWallets(offset, limit)
                 }
-                if (Object.keys(wallets).length > 0) {
-                    Object.assign(self.hdWallets, self.hdWallets, wallets)
-                    document.getElementById('hdwalletModal').style.display = 'block'
-                    self.loading = false
+                if (wallets && Object.keys(wallets).length > 0) {
+                    if (offset === 0) {
+                        self.hdWallets = wallets
+                    } else {
+                        Object.assign(self.hdWallets, wallets)
+                    }
+                    if (!self.hdWallets[self.selectedHdWalletIndex]) {
+                        self.selectedHdWalletIndex = String(Object.keys(self.hdWallets)[0])
+                    }
+                    self.showHdWalletModal = true
+                    self.$toasted.show('Select a wallet address to continue', { type: 'info' })
+                } else {
+                    self.$toasted.show('No wallet addresses found for this path.', { type: 'error' })
                 }
             } catch (error) {
                 console.log(error.message)
-                self.loading = false
                 self.$toasted.show(error.message || error, {
                     type : 'error'
                 })
+            } finally {
+                self.loading = false
             }
         },
         save: async function () {
-            store.clearAll()
             const self = this
+            const isHardwareWallet = self.provider === 'ledger' || self.provider === 'trezor'
+            const selectedAddress = isHardwareWallet &&
+                self.hdWallets[self.selectedHdWalletIndex]
+                ? self.hdWallets[self.selectedHdWalletIndex].address
+                : null
+
+            if (isHardwareWallet && !selectedAddress) {
+                self.$toasted.show('Please select a wallet address first.', { type: 'error' })
+                self.showHdWalletModal = true
+                return
+            }
+
+            if (!isHardwareWallet) {
+                store.clearAll()
+            } else {
+                const keepConfig = store.get('configMaster')
+                const keepLedgerDevicePath = store.get('ledgerDevicePath')
+                store.clearAll()
+                if (keepConfig) {
+                    store.set('configMaster', keepConfig)
+                }
+                if (keepLedgerDevicePath) {
+                    store.set('ledgerDevicePath', keepLedgerDevicePath)
+                }
+            }
+
             self.address = ''
             self.$store.state.address = null
             // clear old data
@@ -728,24 +789,18 @@ export default {
                     }
                     break
                 case 'ledger':
-                    // Object - HttpProvider
                     wjs = new Web3(new Web3.providers.HttpProvider(self.networks.rpc))
-                    // Object - IpcProvider: The IPC provider is used node.js dapps when running a local node
-                    // import net from 'net'
-                    // wjs = new Web3(new Web3.providers.IpcProvider('~/.ethereum/geth.ipc', net))
-
-                    // Object - WebsocketProvider: The Websocket provider is the standard for usage in legacy browsers.
-                    // wjs = await ws.connect(self.networks.wss)
-                    // wjs = new Web3(new Web3.providers.WebsocketProvider(self.chainConfig.ws))
-                    // web3 version 0.2 haven't supported WebsocketProvider yet. (for web@1.0 only)
-                    offset = document.querySelector('input[name="hdWallet"]:checked').value.toString()
-                    store.set('hdDerivationPath', self.hdPath + '/' + offset)
+                    offset = self.selectedHdWalletIndex
+                    store.set('hdDerivationPath', self.hdPath)
+                    store.set('offset', offset)
+                    store.set('network', self.provider)
                     break
                 case 'trezor':
                     wjs = new Web3(new Web3.providers.HttpProvider(self.networks.rpc))
-                    offset = document.querySelector('input[name="hdWallet"]:checked').value.toString()
-                    store.set('hdDerivationPath', self.hdPath + '/' + offset)
+                    offset = self.selectedHdWalletIndex
+                    store.set('hdDerivationPath', self.hdPath)
                     store.set('offset', offset)
+                    store.set('network', self.provider)
                     break
                 default:
                     self.mnemonic = self.mnemonic.trim()
@@ -760,16 +815,31 @@ export default {
                 }
                 await self.setupProvider(this.provider, wjs)
                 await self.setupAccount()
+
+                if (isHardwareWallet && selectedAddress) {
+                    const loggedInAddress = self.toRpcAddress(self.address || '')
+                    const expectedAddress = self.toRpcAddress(selectedAddress)
+                    if (loggedInAddress !== expectedAddress) {
+                        throw new Error('Logged in address does not match the selected wallet.')
+                    }
+                }
+
                 self.loading = false
 
                 if (self.address) {
-                    self.$store.state.address = self.address.toLowerCase()
-                    if (self.provider === 'metamask' || self.provider === 'xinpay' || self.provider === 'connect-wallet') {
-                        store.set('address', self.address.toLowerCase())
-                        store.set('network', self.provider)
+                    const normalizedAddress = self.address.toLowerCase()
+                    self.address = normalizedAddress
+                    self.$store.state.address = normalizedAddress
+                    store.set('address', normalizedAddress)
+                    store.set('network', self.provider)
+                    if (self.provider === 'ledger') {
+                        self.ledgerPayload = ''
                     }
+                    self.showHdWalletModal = false
                     self.$bus.$emit('logged', 'user logged')
-                    self.$toasted.show('Network Provider was changed successfully')
+                    self.$toasted.show('Logged in successfully')
+                } else {
+                    self.$toasted.show('Could not log in with the selected wallet.', { type: 'error' })
                 }
             } catch (e) {
                 self.loading = false
@@ -915,18 +985,28 @@ export default {
             }
         },
         closeModal () {
-            document.getElementById('hdwalletModal').style.display = 'none'
+            this.showHdWalletModal = false
         },
         async setHdPath () {
-            document.getElementById('hdwalletModal').style.display = 'none'
+            if (!this.hdWallets[this.selectedHdWalletIndex]) {
+                this.$toasted.show('Please select a wallet address.', { type: 'error' })
+                return
+            }
+            store.set('hdDerivationPath', this.hdPath)
+            store.set('offset', this.selectedHdWalletIndex)
+            this.showHdWalletModal = false
             await this.save()
         },
         async moreHdAddresses () {
-            document.getElementById('moreHdAddresses').style.cursor = 'wait'
-            document.body.style.cursor = 'wait'
-            await this.selectHdPath(Object.keys(this.hdWallets).length, this.defaultWalletNumber)
-            document.getElementById('moreHdAddresses').style.cursor = 'pointer'
-            document.body.style.cursor = 'default'
+            if (this.loadingMoreHdAddresses) {
+                return
+            }
+            this.loadingMoreHdAddresses = true
+            try {
+                await this.selectHdPath(Object.keys(this.hdWallets).length, defaultWalletNumber)
+            } finally {
+                this.loadingMoreHdAddresses = false
+            }
         },
         async setKYCStatus (contract) {
             // const isHashFound = await contract.methods.getHashCount().call({ from:this.address })
@@ -941,6 +1021,15 @@ export default {
         },
         changePath (path) {
             this.hdPath = path
+        },
+        formatWalletAddress (address) {
+            return this.formatAddressByHdPath(address, this.hdPath)
+        },
+        getDisplayAddress (address) {
+            return this.formatAddressByHdPath(address, this.hdPath || this.getHdBasePath())
+        },
+        getVoterLinkPath (address) {
+            return '/voter/xdc' + this.toRpcAddress(address).substring(2)
         }
     }
 }
