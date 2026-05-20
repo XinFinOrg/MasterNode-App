@@ -13,9 +13,9 @@
                             <h4 class="h4 color-black">Address</h4>
                             <p>
                                 <router-link
-                                    :to="`/voter/xdc${address.substring(2)}`"
+                                    :to="getVoterLinkPath(address)"
                                     class="text-truncate">
-                                    {{ 'xdc' + address.substring(2) }}
+                                    {{ getDisplayAddress(address) }}
                                 </router-link>
                             </p>
                         </div>
@@ -190,9 +190,9 @@
                                     or try path <code
                                         class="hd-path"
                                         @click="changePath(`m/44'/550'/0'/0`)">m/44'/550'/0'/0</code>
-                                    or <code
+                                    <!-- or <code
                                         class="hd-path"
-                                        @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code>
+                                        @click="changePath(`m/44'/551'/0'/0`)">m/44'/551'/0'/0</code> -->
                                     with XDC Network App (on Ledger).</small>
                             </b-form-group>
 
@@ -261,9 +261,9 @@
                                     <i class="tm-wallet XDC-list__icon" />
                                     <p class="XDC-list__text">
                                         <router-link
-                                            :to="`/voter/xdc${address.substring(2)}`"
+                                            :to="getVoterLinkPath(address)"
                                             class="text-truncate">
-                                            {{ 'xdc' + address.substring(2) }}
+                                            {{ getDisplayAddress(address) }}
                                         </router-link>
                                         <span>Address</span>
                                     </p>
@@ -418,7 +418,9 @@
                                     </span>
                                     <span class="XDC-hd-wallet-modal__balance">
                                         {{ hdwallet.balance }}
-                                        <span class="XDC-hd-wallet-modal__symbol">{{ getCurrencySymbol() }}</span>
+                                        <span class="XDC-hd-wallet-modal__symbol">
+                                            {{ getCurrencySymbolByHdPath(hdPath) }}
+                                        </span>
                                     </span>
                                 </label>
                             </li>
@@ -815,8 +817,8 @@ export default {
                 await self.setupAccount()
 
                 if (isHardwareWallet && selectedAddress) {
-                    const loggedInAddress = (self.address || '').toLowerCase()
-                    const expectedAddress = selectedAddress.toLowerCase()
+                    const loggedInAddress = self.toRpcAddress(self.address || '')
+                    const expectedAddress = self.toRpcAddress(selectedAddress)
                     if (loggedInAddress !== expectedAddress) {
                         throw new Error('Logged in address does not match the selected wallet.')
                     }
@@ -1021,14 +1023,13 @@ export default {
             this.hdPath = path
         },
         formatWalletAddress (address) {
-            if (!address) {
-                return ''
-            }
-            const normalized = address.toLowerCase()
-            if (normalized.startsWith('0x')) {
-                return 'xdc' + normalized.substring(2)
-            }
-            return normalized
+            return this.formatAddressByHdPath(address, this.hdPath)
+        },
+        getDisplayAddress (address) {
+            return this.formatAddressByHdPath(address, this.hdPath || this.getHdBasePath())
+        },
+        getVoterLinkPath (address) {
+            return '/voter/xdc' + this.toRpcAddress(address).substring(2)
         }
     }
 }

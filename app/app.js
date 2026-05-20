@@ -45,6 +45,60 @@ const LEDGER_APP_XDC = 'XDC Network'
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
+const getHdBasePath = () => {
+    let path = localStorage.get('hdDerivationPath') || getDefaultLedgerBasePath()
+    if (path.split('/').length > 5 && /\/\d+$/.test(path)) {
+        path = path.replace(/\/\d+$/, '')
+    }
+    return path
+}
+
+const getCoinTypeFromPath = (path) => {
+    const match = (path || '').match(/44'\/(\d+)'/)
+    return match ? Number(match[1]) : 60
+}
+
+const usesXdcAddressPrefix = (path) => {
+    const coinType = getCoinTypeFromPath(path)
+    return coinType === 550 || coinType === 551
+}
+
+const getCurrencySymbolByHdPath = (path) => {
+    if (usesXdcAddressPrefix(path)) {
+        return 'XDC'
+    }
+    if (getCoinTypeFromPath(path) === 60) {
+        return 'ETH'
+    }
+    return 'XDC'
+}
+
+const toRpcAddress = (address) => {
+    if (!address) {
+        return address
+    }
+    const normalized = address.toLowerCase()
+    if (normalized.startsWith('xdc')) {
+        return '0x' + normalized.substring(3)
+    }
+    if (!normalized.startsWith('0x')) {
+        return '0x' + normalized
+    }
+    return normalized
+}
+
+const formatAddressByHdPath = (address, path) => {
+    if (!address) {
+        return ''
+    }
+    const rpcAddress = toRpcAddress(address)
+    const hdPath = path || getHdBasePath()
+    if (usesXdcAddressPrefix(hdPath)) {
+        return 'xdc' + rpcAddress.substring(2)
+    }
+    return rpcAddress
+}
+
 // Ledger firmware uses SLIP-0044 coin type 550; 551 is accepted in the UI and mapped on device if needed.
 const normalizeLedgerPath = (path) => (path || '').replace(/44'\/551'/g, "44'/550'")
 
@@ -278,7 +332,7 @@ const getWalletConnectProvider = async (showQrModal, blockchain) => {
         showQrModal: showQrModal,
         qrModalOptions: { themeMode: 'light' },
         chains: [50],
-        optionalChains: [1, 50, 51],
+        optionalChains: [1, 50],
         methods: ['eth_sendTransaction', 'personal_sign'],
         rpcMap: {
             [blockchain.networkId]: blockchain.rpc,
@@ -364,7 +418,7 @@ Vue.prototype.getAccount = async function () {
                     to enable contract data and display data on your device!`)
                 }
                 const result = await ledgerGetAddress(Vue.prototype.appEth, path)
-                account = result.address
+                account = formatAddressByHdPath(result.address, getLedgerPath(offset))
             }
         } catch (error) {
             console.log(error)
@@ -416,7 +470,9 @@ Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
             const convertedAddress = Vue.prototype.HDWalletCreate(payload, i)
             let balance = '0.00'
             try {
-                const balanceWei = await web3.eth.getBalance(convertedAddress)
+                const balanceWei = await web3.eth.getBalance(
+                    toRpcAddress(convertedAddress)
+                )
                 balance = parseFloat(web3.utils.fromWei(balanceWei, 'ether')).toFixed(2)
             } catch (balanceError) {
                 console.log(balanceError)
@@ -480,10 +536,20 @@ Vue.prototype.HDWalletCreate = (payload, index) => {
     let pubKey = ethUtils.bufferToHex(derivedKey.publicKey)
     const buff = ethUtils.publicToAddress(pubKey, true)
 
-    return ethUtils.bufferToHex(buff)
+    return formatAddressByHdPath(ethUtils.bufferToHex(buff), getHdBasePath())
 }
 
-Vue.prototype.loadTrezorWallets = async (offset, limit) => {
+Vue.prototype.getHdBasePath = getHdBasePath
+Vue.prototype.toRpcAddress = toRpcAddress
+Vue.prototype.formatAddressByHdPath = formatAddressByHdPath
+Vue.prototype.getVoterLinkPath = (address) => {
+    return '/voter/xdc' + toRpcAddress(address).substring(2)
+}
+Vue.prototype.getDisplayAddress = (address) => {
+    return formatAddressByHdPath(address, getHdBasePath())
+}
+
+Vue.prototype.loadTrezorWallets = async function (offset, limit) {
     try {
         const wallets = {}
         const payload = Vue.prototype.trezorPayload
@@ -497,7 +563,7 @@ Vue.prototype.loadTrezorWallets = async (offset, limit) => {
             web3 = Vue.prototype.web3
             for (let i = offset; i < (offset + limit); i++) {
                 convertedAddress = Vue.prototype.HDWalletCreate(payload, i)
-                balance = await web3.eth.getBalance(convertedAddress)
+                balance = await web3.eth.getBalance(toRpcAddress(convertedAddress))
                 wallets[i] = {
                     address: convertedAddress,
                     balance: parseFloat(web3.utils.fromWei(balance, 'ether')).toFixed(2)
@@ -515,9 +581,22 @@ Vue.prototype.loadTrezorWallets = async (offset, limit) => {
 
 Vue.prototype.formatNumber = Helper.formatNumber
 
-Vue.prototype.formatCurrencySymbol = Helper.formatCurrencySymbol
+Vue.prototype.getCurrencySymbolByHdPath = getCurrencySymbolByHdPath
 
-Vue.prototype.getCurrencySymbol = Helper.getCurrencySymbol
+Vue.prototype.getCurrencySymbol = function () {
+    const provider = Vue.prototype.NetworkProvider || localStorage.get('network')
+    const hdProviders = ['ledger', 'trezor', 'custom']
+
+    if (hdProviders.includes(provider)) {
+        return getCurrencySymbolByHdPath(getHdBasePath())
+    }
+
+    return Helper.getCurrencySymbol()
+}
+
+Vue.prototype.formatCurrencySymbol = function (number) {
+    return `${number} ${Vue.prototype.getCurrencySymbol()}`
+}
 
 Vue.prototype.checkLongNumber = Helper.checkLongNumber
 
