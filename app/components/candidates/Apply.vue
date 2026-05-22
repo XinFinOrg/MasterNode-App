@@ -150,7 +150,7 @@
                     class="col-12 col-md-6 col-lg-6">
                     <b-card
                         :class="'XDC-card XDC-card--lighter'
-                        + (loading ? ' XDC-loading' : '')">
+                        + (kycLoading ? ' XDC-loading' : '')">
                         <h4 class="h4 color-black XDC-card__title"><strong>Upload KYC Document</strong></h4>
                         <template>
                             <b-form
@@ -237,6 +237,7 @@ export default {
             coinbase: '',
             // nodeUrl: '',
             loading: false,
+            kycLoading: false,
             coinbaseError: false,
             provider: this.NetworkProvider || store.get('network') || null,
             showQR: true,
@@ -461,9 +462,10 @@ export default {
                 }
             } catch (e) {
                 self.loading = false
-                self.$toasted.show(`An error occurred while applying, please fix it and try again: ${String(e)}`, {
-                    type: 'error'
-                })
+                self.$toasted.show(
+                    `An error occurred while applying, please fix it and try again: ${self.formatWalletError(e)}`,
+                    { type: 'error' }
+                )
                 console.log(e)
                 if (self.interval) {
                     clearInterval(self.interval)
@@ -563,19 +565,42 @@ export default {
                         return false
                     }
 
-                    this.loading = true
+                    this.kycLoading = true
                     const formData = new FormData()
-                    let signerAccount = (await this.getAccount() || this.account || '').toLowerCase()
-                    if (signerAccount.startsWith('xdc')) {
-                        signerAccount = '0x' + signerAccount.substring(3)
+                    const network = this.NetworkProvider ||
+                        this.provider ||
+                        store.get('network')
+                    let signerAccount
+                    if (network === 'ledger' || network === 'trezor') {
+                        signerAccount = this.toRpcAddress(
+                            await this.getAccount() ||
+                            this.account ||
+                            store.get('address') ||
+                            ''
+                        ).toLowerCase()
+                    } else {
+                        signerAccount = this.toRpcAddress(
+                            this.account || store.get('address') || (await this.getAccount()) || ''
+                        ).toLowerCase()
+                    }
+                    if (!signerAccount) {
+                        throw new Error('No wallet account found. Please log in again.')
                     }
                     const now = new Date().toISOString()
                     const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
                     let signedMessage
-                    try {
-                        signedMessage = await this.web3.eth.personal.sign(message, signerAccount, '')
-                    } catch (e) {
-                        signedMessage = await this.web3.eth.sign(message, signerAccount)
+                    if (network === 'ledger' || network === 'trezor') {
+                        signedMessage = await this.signMessage(message)
+                    } else {
+                        try {
+                            signedMessage = await this.web3.eth.personal.sign(
+                                message,
+                                signerAccount,
+                                ''
+                            )
+                        } catch (e) {
+                            signedMessage = await this.web3.eth.sign(message, signerAccount)
+                        }
                     }
 
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
@@ -583,6 +608,11 @@ export default {
                     formData.append('message', message)
                     formData.append('signedMessage', signedMessage)
                     const { data } = await axios.post('/api/ipfs/addKYC', formData, {
+                        params: {
+                            account: signerAccount,
+                            message: message,
+                            signedMessage: signedMessage
+                        },
                         headers: {
                             'x-kyc-account': signerAccount,
                             'x-kyc-message': message,
@@ -593,29 +623,39 @@ export default {
                     contract = self.XDCValidator
                     const currentGasPrice = this.web3.utils.toBN(await this.web3.eth.getGasPrice())
                     const gasPrice = currentGasPrice.muln(14).divn(10)
-                    let txParams = {
-                        from : this.account,
+                    const txOptions = {
                         gasPrice: this.web3.utils.toHex(gasPrice),
+                        gas: this.web3.utils.toHex(3000000),
                         gasLimit: this.web3.utils.toHex(3000000)
                     }
-                    console.log(`>>>>>>>>>>>>TxParams ${txParams}`)
-                    console.log(`>>>>>>>>>>>>HASH${data.hash}`)
-                    console.log(`>>>>>>>>>>>>Before`)
-                    // console.log(`>>>>>>>>>>>>${contract.mgetCandidates()}`)
-                    await contract.methods.uploadKYC(data.hash).send(txParams)
-                    // await contract.propose(coinbase, txParams)
-                    // console.log(`>>>>>>>${rs}`)
-                    // await contract.getCandidates()
-                    this.KYC.status = true
-                    this.loading = false
-                    this.$toasted.show('KYC uploaded successfully')
+                    if (network === 'ledger' || network === 'trezor') {
+                        await this.sendHardwareWalletTransaction(
+                            contract.methods.uploadKYC(data.hash),
+                            txOptions
+                        )
+                    } else {
+                        const fromAccount = (this.account || store.get('address') || '').toLowerCase()
+                        const txParams = Object.assign({ from: fromAccount }, txOptions)
+                        await this.sendContractTransaction(
+                            contract.methods.uploadKYC(data.hash),
+                            txParams
+                        )
+                    }
+                    await this.getKYCStatus(this.account)
+                    if (!this.KYC.status) {
+                        this.KYC.status = true
+                    }
+                    this.$toasted.show('KYC uploaded successfully', { type: 'success' })
                 }
             } catch (e) {
                 console.log(e)
-                this.loading = false
-                this.$toasted.show(`An error occurred while excuting. ${String(e)}`, {
+                const reason = e.response && e.response.data && e.response.data.reason
+                const detail = reason || this.formatWalletError(e)
+                this.$toasted.show(`An error occurred while uploading KYC. ${detail}`, {
                     type: 'error'
                 })
+            } finally {
+                this.kycLoading = false
             }
         }
     }
