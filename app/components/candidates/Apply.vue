@@ -641,11 +641,17 @@ export default {
                             txParams
                         )
                     }
-                    await this.getKYCStatus(this.account)
-                    if (!this.KYC.status) {
-                        this.KYC.status = true
+                    await new Promise(resolve => setTimeout(resolve, 2000))
+                    await this.getKYCStatus(signerAccount)
+
+                    if (this.KYC.status) {
+                        this.$toasted.show('KYC uploaded successfully', { type: 'success' })
+                    } else {
+                        this.$toasted.show(
+                            'KYC transaction submitted, but status is not updated yet. Please refresh after some time.',
+                            { type: 'default' }
+                        )
                     }
-                    this.$toasted.show('KYC uploaded successfully', { type: 'success' })
                 }
             } catch (e) {
                 console.log(e)
