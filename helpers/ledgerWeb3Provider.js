@@ -155,4 +155,4 @@ function createLedgerWeb3Provider (rpcProvider, hooks) {
     }
 }
 
-export { createLedgerWeb3Provider, toRpcAddress }
+module.exports = { createLedgerWeb3Provider, toRpcAddress }
