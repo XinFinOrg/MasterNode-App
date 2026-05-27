@@ -75,7 +75,7 @@ async function recoverPersonalSignAddress (message, signedMessage) {
             try {
                 const pubKey = ethUtil.ecrecover(
                     msgHash,
-                    recoveryId,
+                    recoveryId + 27,
                     sigBuf.slice(0, 32),
                     sigBuf.slice(32, 64)
                 )
