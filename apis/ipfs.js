@@ -23,8 +23,10 @@ function toHexAddress (address) {
 function normalizeValue (value) {
     if (value === undefined || value === null) return ''
     if (Array.isArray(value)) {
+        if (value.length === 0) return ''
         value = value[0]
     }
+    if (value === undefined || value === null) return ''
     return String(value).trim().replace(/^["']|["']$/g, '')
 }
 
