@@ -22,6 +22,8 @@ import VueClipboards from 'vue-clipboards'
 import Vuex from 'vuex'
 // import HDWalletProvider from 'truffle-hdwallet-provider'
 import { HDWalletProvider } from '../helpers.js'
+import { createLedgerWeb3Provider } from '../helpers/ledgerWeb3Provider.js'
+import { formatWalletError, toWalletError } from '../helpers/walletError.js'
 import localStorage from 'store'
 // Libusb is included as a submodule.
 // On Linux, you'll need libudev to build libusb.
@@ -85,6 +87,25 @@ const toRpcAddress = (address) => {
         return '0x' + normalized
     }
     return normalized
+}
+
+const normalizeTxHash = (hash) => {
+    if (!hash) {
+        return hash
+    }
+    const normalized = String(hash).toLowerCase()
+    if (normalized.startsWith('xdc')) {
+        return '0x' + normalized.substring(3)
+    }
+    return normalized
+}
+
+const toHexBuffer = (value) => {
+    if (Buffer.isBuffer(value)) {
+        return value
+    }
+    const hex = String(value).trim()
+    return ethUtils.toBuffer(hex.startsWith('0x') ? hex : '0x' + hex)
 }
 
 const formatAddressByHdPath = (address, path) => {
@@ -179,26 +200,69 @@ const getLedgerAppOptions = (path) => {
     }
 }
 
-const getLedgerPath = (index = null) => {
+const getLedgerBasePath = () => {
     let basePath = localStorage.get('ledgerDevicePath') ||
         localStorage.get('hdDerivationPath') ||
         getDefaultLedgerBasePath()
 
-    if (index !== null && index !== undefined) {
+    const segments = basePath.split('/')
+    if (segments.length > 5 && /^\d+$/.test(segments[segments.length - 1])) {
         basePath = basePath.replace(/\/\d+$/, '')
-        return `${basePath}/${index}`
     }
+    return basePath
+}
 
-    // Saved wallet paths include a trailing address index (e.g. .../0/3).
-    if (basePath.split('/').length > 5 && /\/\d+$/.test(basePath)) {
-        basePath = basePath.replace(/\/\d+$/, '')
+// Account path for unlock / wallet list (e.g. m/44'/550'/0'/0).
+const getLedgerAccountPath = () => getLedgerBasePath()
+
+// Full path for signing / getAddress without payload (e.g. m/44'/550'/0'/0/0).
+const getLedgerPath = (index = null) => {
+    const basePath = getLedgerBasePath()
+
+    if (index !== null && index !== undefined) {
+        return `${basePath}/${index}`
     }
 
     return basePath
 }
 
+const getLedgerBlindSigningHelp = (path) => {
+    const { preferred } = getLedgerAppOptions(path || getLedgerAccountPath())
+    return `Contract signing failed on "${preferred}". On the device (not Ledger Live): open "${preferred}" → ` +
+        'Settings → enable "Blind signing" AND "Contract data" if both appear (enable Developer mode in Ledger Live first). ' +
+        'If Blind signing is already ON, turn Contract data ON as well, then quit the app, unplug Ledger, reconnect, and retry.'
+}
+
+// ethereumjs-tx leaves v=0x1c by default; Ledger needs EIP-155 v=chainId, r=0, s=0 on unsigned txs.
+const prepareUnsignedLedgerTx = (txFields) => {
+    const tx = new Transaction(txFields)
+    const chainId = tx.getChainId()
+    if (chainId > 0) {
+        tx.v = chainId
+        tx.r = Buffer.alloc(0)
+        tx.s = Buffer.alloc(0)
+    }
+    return tx
+}
+
+const isLedgerContractDataError = (error) => {
+    if (!error) return false
+    return error.statusCode === 0x6a80 ||
+        error.name === 'EthAppPleaseEnableContractData' ||
+        (error.message && /0x6a80|contract data/i.test(error.message))
+}
+
+const signLedgerTransaction = async (appEth, path, serializedRawTx) => {
+    // null resolution = blind signing (required for custom validator contract calls on XDC)
+    return appEth.signTransaction(path, serializedRawTx, null)
+}
+
 const formatLedgerError = (error, path) => {
     const displayPath = normalizeLedgerPath(path)
+
+    if (isLedgerContractDataError(error)) {
+        return new Error(getLedgerBlindSigningHelp(path))
+    }
 
     if (error && (error.statusCode === 0x6a15 || (error.message && error.message.indexOf('0x6a15') >= 0))) {
         if ((path || '').indexOf("551'") >= 0) {
@@ -212,7 +276,62 @@ const formatLedgerError = (error, path) => {
             `(do not switch apps), then try again. If it persists, try m/44'/60'/0'/0 with the Ethereum app.`
         )
     }
-    return error
+    if (error instanceof Error) {
+        return error
+    }
+    return toWalletError(error)
+}
+
+const normalizeLedgerTxParams = (txParams) => {
+    const tx = Object.assign({}, txParams)
+    if (tx.from) {
+        tx.from = toRpcAddress(tx.from)
+    }
+    if (tx.to) {
+        tx.to = toRpcAddress(tx.to)
+    }
+    if (tx.gasLimit && !tx.gas) {
+        tx.gas = tx.gasLimit
+    }
+    if (tx.gas && !tx.gasLimit) {
+        tx.gasLimit = tx.gas
+    }
+    return tx
+}
+
+const pickLedgerTxFields = (txParams) => {
+    const normalized = normalizeLedgerTxParams(txParams)
+    return {
+        nonce: normalized.nonce,
+        gasPrice: normalized.gasPrice,
+        gasLimit: normalized.gasLimit,
+        to: normalized.to,
+        value: normalized.value || '0x0',
+        data: normalized.data || '0x'
+    }
+}
+
+const formatLedgerSignature = (signature) => {
+    const formatted = {}
+    ;['v', 'r', 's'].forEach((key) => {
+        let val = signature[key]
+        if (val === undefined || val === null) {
+            return
+        }
+        if (typeof val === 'number') {
+            val = val.toString(16)
+        }
+        val = String(val).trim()
+        if (!val.startsWith('0x')) {
+            val = '0x' + val
+        }
+        formatted[key] = val
+    })
+    return formatted
+}
+
+const serializeSignedTxForRpc = (tx) => {
+    return 'xdc' + tx.serialize().toString('hex')
 }
 
 const createLedgerEth = async (path) => {
@@ -379,10 +498,14 @@ Vue.prototype.getAccount = async function () {
         account = (await wjs.eth.getAccounts())[0]
         break
     case 'metamask':
-        // Request account access if needed - for metamask
         if (window.ethereum) {
-            await window.ethereum.enable()
-            // await window.ethereum.request({ method: 'eth_requestAccounts' })
+            if (window.ethereum.request) {
+                await window.ethereum.request({ method: 'eth_requestAccounts' })
+            } else if (window.ethereum.enable) {
+                await window.ethereum.enable()
+            }
+        } else if (window.xdcchain && window.xdcchain.enable) {
+            await window.xdcchain.enable()
         }
         account = (await wjs.eth.getAccounts())[0]
         break
@@ -412,11 +535,6 @@ Vue.prototype.getAccount = async function () {
             } else {
                 const path = getLedgerPath(offset)
                 await ensureLedgerEth(path)
-                let ethAppConfig = await Vue.prototype.appEth.getAppConfiguration()
-                if (!ethAppConfig.arbitraryDataEnabled) {
-                    throw new Error(`Please go to App Setting
-                    to enable contract data and display data on your device!`)
-                }
                 const result = await ledgerGetAddress(Vue.prototype.appEth, path)
                 account = formatAddressByHdPath(result.address, getLedgerPath(offset))
             }
@@ -451,17 +569,15 @@ Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
     if (!u2fSupported) {
         throw new Error(`WebUSB not supported in this browser. Please use Google Chrome with HTTPS.`)
     }
-    await Vue.prototype.detectNetwork('ledger')
 
     const payload = Vue.prototype.ledgerPayload
     if (!payload || !payload.publicKey) {
         throw new Error('Ledger not unlocked. Please connect your device and try again.')
     }
 
-    const web3 = Vue.prototype.web3
-    if (!web3) {
-        throw new Error('Network not ready. Please try again.')
-    }
+    const config = localStorage.get('configMaster') || await getConfig()
+    const rpcUrl = config.blockchain.rpc
+    const balanceWeb3 = new Web3(new Web3.providers.HttpProvider(rpcUrl))
 
     const wallets = {}
 
@@ -470,10 +586,10 @@ Vue.prototype.loadMultipleLedgerWallets = async function (offset, limit) {
             const convertedAddress = Vue.prototype.HDWalletCreate(payload, i)
             let balance = '0.00'
             try {
-                const balanceWei = await web3.eth.getBalance(
-                    toRpcAddress(convertedAddress)
+                const balanceWei = await balanceWeb3.eth.getBalance(
+                    convertedAddress
                 )
-                balance = parseFloat(web3.utils.fromWei(balanceWei, 'ether')).toFixed(2)
+                balance = parseFloat(balanceWeb3.utils.fromWei(balanceWei, 'ether')).toFixed(2)
             } catch (balanceError) {
                 console.log(balanceError)
             }
@@ -506,15 +622,15 @@ Vue.prototype.unlockTrezor = async () => {
 }
 
 Vue.prototype.unlockLedger = async () => {
+    const userPath = getLedgerAccountPath()
     try {
-        const userPath = localStorage.get('hdDerivationPath') || getDefaultLedgerBasePath()
         await ensureLedgerEth(userPath)
 
         const result = await ledgerGetAddress(Vue.prototype.appEth, userPath)
         Vue.prototype.ledgerPayload = result
     } catch (error) {
         console.log(error)
-        throw formatLedgerError(error, getLedgerPath())
+        throw formatLedgerError(error, userPath)
     }
 }
 
@@ -622,7 +738,11 @@ const router = new VueRouter({
 
 router.beforeEach(async (to, from, next) => {
     const provider = Vue.prototype.NetworkProvider || localStorage.get('network') || null
-    await Vue.prototype.detectNetwork(provider)
+    try {
+        await Vue.prototype.detectNetwork(provider)
+    } catch (e) {
+        console.log(formatWalletError(e))
+    }
     next()
 })
 
@@ -640,8 +760,11 @@ getConfig().then((config) => {
         }
     })
 }).catch(e => {
-    console.log(e)
-    throw e
+    console.log(formatWalletError(e))
+    const cached = localStorage.get('configMaster')
+    if (cached) {
+        localStorage.set('configMaster', cached)
+    }
 })
 
 Vue.use(Vuex)
@@ -655,9 +778,14 @@ Vue.prototype.detectNetwork = async function (provider) {
     try {
         const config = localStorage.get('configMaster') || await getConfig()
         const chainConfig = config.blockchain
-        const hardwareProviders = ['ledger', 'trezor', 'XDCwallet', 'custom']
+        const currentProvider = Vue.prototype.NetworkProvider
+        const hasLedgerWeb3 = this.web3 &&
+            this.web3.currentProvider &&
+            this.web3.currentProvider.isLedgerProvider
         const needsReinit = !this.web3 ||
-            (hardwareProviders.includes(provider) && Vue.prototype.NetworkProvider !== provider)
+            currentProvider !== provider ||
+            (provider === 'ledger' && !hasLedgerWeb3) ||
+            (provider !== 'ledger' && hasLedgerWeb3)
 
         if (!needsReinit && this.web3) {
             return
@@ -682,8 +810,11 @@ Vue.prototype.detectNetwork = async function (provider) {
             break
         }
         case 'metamask':
+            // XDCPay uses window.web3; MetaMask uses window.ethereum
             if (window.ethereum) {
                 wjs = new Web3(window.ethereum)
+            } else if (window.web3 && window.web3.currentProvider) {
+                wjs = new Web3(window.web3.currentProvider)
             }
             break
         case 'XDCwalletDapp':
@@ -710,9 +841,31 @@ Vue.prototype.detectNetwork = async function (provider) {
                 chainConfig.rpc, 0, 1, true))
             break
         case 'trezor':
-        case 'ledger':
             wjs = new Web3(new Web3.providers.HttpProvider(chainConfig.rpc))
             break
+        case 'ledger': {
+            const rpcProvider = new Web3.providers.HttpProvider(chainConfig.rpc)
+            const ledgerProvider = createLedgerWeb3Provider(rpcProvider, {
+                getAccounts: async () => {
+                    const account = await Vue.prototype.getAccount()
+                    return account ? [account] : []
+                },
+                signPersonalMessage: (message) => Vue.prototype.signMessage(message),
+                prepareTransaction: async (tx) => {
+                    if (!tx.chainId) {
+                        tx.chainId = chainConfig.networkId
+                    }
+                    if (!tx.gas && tx.gasLimit) {
+                        tx.gas = tx.gasLimit
+                    }
+                },
+                signTransaction: (tx) => Vue.prototype.signTransaction(tx),
+                sendSignedTransaction: (tx, signature) =>
+                    Vue.prototype.sendSignedTransaction(tx, signature)
+            })
+            wjs = new Web3(ledgerProvider)
+            break
+        }
         default:
             break
         }
@@ -722,6 +875,7 @@ Vue.prototype.detectNetwork = async function (provider) {
         }
     } catch (error) {
         console.log(error)
+        throw toWalletError(error)
     }
 }
 
@@ -747,34 +901,45 @@ Vue.prototype.getXDCValidatorInstance = async function () {
  * @param object txParams
  * @return object signature {r, s, v}
  */
+Vue.prototype.formatWalletError = formatWalletError
+
 Vue.prototype.signTransaction = async function (txParams) {
     const offset = Number(localStorage.get('offset') || 0)
     const path = getLedgerPath(offset)
-    const provider = Vue.prototype.NetworkProvider
+    const provider = Vue.prototype.NetworkProvider || localStorage.get('network')
+    const normalizedTx = normalizeLedgerTxParams(txParams)
     let signature
-    if (provider === 'ledger') {
-        await ensureLedgerEth(path)
-        const config = localStorage.get('configMaster') || await getConfig()
-        const chainConfig = config.blockchain
-        const rawTx = new Transaction(txParams)
-        rawTx.v = Buffer.from([chainConfig.networkId])
-        const serializedRawTx = rawTx.serialize().toString('hex')
-        signature = await Vue.prototype.appEth.signTransaction(
-            path,
-            serializedRawTx
-        )
-    }
-    if (provider === 'trezor') {
-        try {
+    try {
+        if (provider === 'ledger') {
+            await ensureLedgerEth(path)
+            const config = localStorage.get('configMaster') || await getConfig()
+            const chainConfig = config.blockchain
+            const unsignedTx = prepareUnsignedLedgerTx(Object.assign(
+                pickLedgerTxFields(normalizedTx),
+                { chainId: normalizedTx.chainId || chainConfig.networkId }
+            ))
+            const serializedRawTx = unsignedTx.serialize().toString('hex')
+            signature = await signLedgerTransaction(
+                Vue.prototype.appEth,
+                path,
+                serializedRawTx
+            )
+        }
+        if (provider === 'trezor') {
             const result = await TrezorConnect.ethereumSignTransaction({
                 path,
-                transaction: txParams
+                transaction: normalizedTx
             })
+            if (!result.success) {
+                throw new Error(
+                    (result.payload && result.payload.error) || 'Trezor signing failed'
+                )
+            }
             signature = result.payload
-        } catch (error) {
-            console.log(error)
-            throw error
         }
+    } catch (error) {
+        console.log(error)
+        throw formatLedgerError(error, path)
     }
     return signature
 }
@@ -787,32 +952,188 @@ Vue.prototype.signTransaction = async function (txParams) {
 Vue.prototype.sendSignedTransaction = function (txParams, signature) {
     return new Promise((resolve, reject) => {
         try {
-            // "hexify" the keys
-            Object.keys(signature).map((key, _) => {
-                if (signature[key].startsWith('0x')) {
-                    return signature[key]
-                } else signature[key] = '0x' + signature[key]
-            })
-            let txObj = Object.assign({}, txParams, signature)
-            let tx = new Transaction(txObj)
-            let serializedTx = '0x' + tx.serialize().toString('hex')
-            // web3 v0.2, method name is sendRawTransaction
-            // You are using web3 v1.0. The method was renamed to sendSignedTransaction.
-            Vue.prototype.web3.eth.sendSignedTransaction(
-                serializedTx
-            ).on('transactionHash', txHash => resolve(txHash))
-                .catch(error => reject(error))
+            const normalizedTx = normalizeLedgerTxParams(txParams)
+            const sig = formatLedgerSignature(signature)
+            const config = localStorage.get('configMaster')
+            const chainId = normalizedTx.chainId ||
+                (config && config.blockchain && config.blockchain.networkId)
+            const tx = new Transaction(Object.assign(
+                pickLedgerTxFields(normalizedTx),
+                chainId ? { chainId } : {},
+                sig
+            ))
+
+            if (!tx.verifySignature()) {
+                return reject(new Error(
+                    'Invalid transaction signature. Reconnect Ledger and try again.'
+                ))
+            }
+
+            const expectedFrom = ethUtils.toBuffer(normalizedTx.from)
+            const sender = tx.getSenderAddress()
+            if (!sender.equals(expectedFrom)) {
+                return reject(new Error(
+                    'Transaction signer does not match your wallet. Check Settings and try again.'
+                ))
+            }
+
+            const serializedTx = serializeSignedTxForRpc(tx)
+            Vue.prototype.web3.eth.sendSignedTransaction(serializedTx)
+                .on('transactionHash', (txHash) => resolve(txHash))
+                .on('error', (error) => reject(toWalletError(error)))
+                .catch((error) => reject(toWalletError(error)))
         } catch (error) {
-            reject(error)
+            reject(toWalletError(error))
         }
     })
+}
+
+const getReceiptWeb3 = () => {
+    const config = localStorage.get('configMaster')
+    const rpcUrl = config && config.blockchain && config.blockchain.rpc
+    if (!rpcUrl) {
+        return Vue.prototype.web3
+    }
+    return new Web3(new Web3.providers.HttpProvider(rpcUrl))
+}
+
+const validateTransactionReceipt = (receipt) => {
+    if (!receipt) {
+        throw new Error('No transaction receipt received from wallet.')
+    }
+    const status = receipt.status
+    if (status === false || status === '0x0' || Number(status) === 0) {
+        throw new Error('Transaction failed on chain.')
+    }
+    return receipt
+}
+
+Vue.prototype.waitForTransactionReceipt = async function (txHash, timeoutMs = 120000) {
+    const rpcHash = normalizeTxHash(txHash)
+    const xdcHash = rpcHash && rpcHash.startsWith('0x') ? 'xdc' + rpcHash.substring(2) : null
+    const hashesToTry = [...new Set([rpcHash, xdcHash, txHash].filter(Boolean))]
+    const readWeb3 = getReceiptWeb3()
+    const start = Date.now()
+
+    while (Date.now() - start < timeoutMs) {
+        for (let i = 0; i < hashesToTry.length; i++) {
+            try {
+                const receipt = await readWeb3.eth.getTransactionReceipt(hashesToTry[i])
+                if (receipt) {
+                    return validateTransactionReceipt(receipt)
+                }
+            } catch (pollError) {
+                console.log(pollError)
+            }
+        }
+        await delay(2000)
+    }
+    throw new Error('Transaction timed out waiting for confirmation.')
+}
+
+/**
+ * Wait for wallet .send() to finish. XDCPay often does not expose getTransactionReceipt on the
+ * injected provider — poll the public RPC instead once we have a tx hash or receipt.
+ */
+Vue.prototype.sendContractTransaction = function (contractMethod, txParams, timeoutMs = 180000) {
+    return new Promise((resolve, reject) => {
+        let settled = false
+        const complete = (receipt) => {
+            if (settled) {
+                return
+            }
+            settled = true
+            clearTimeout(timer)
+            try {
+                resolve(validateTransactionReceipt(receipt))
+            } catch (error) {
+                reject(toWalletError(error))
+            }
+        }
+        const fail = (error) => {
+            if (settled) {
+                return
+            }
+            settled = true
+            clearTimeout(timer)
+            reject(toWalletError(error))
+        }
+
+        const timer = setTimeout(() => {
+            fail(new Error('Transaction timed out waiting for wallet confirmation.'))
+        }, timeoutMs)
+
+        const promi = contractMethod.send(txParams)
+
+        promi.once('error', fail)
+        promi.once('receipt', complete)
+
+        promi.on('confirmation', (confirmationNumber, receipt) => {
+            if (receipt && (receipt.transactionHash || receipt.blockNumber !== undefined)) {
+                complete(receipt)
+            }
+        })
+
+        promi.once('transactionHash', (txHash) => {
+            Vue.prototype.waitForTransactionReceipt(txHash, timeoutMs)
+                .then(complete)
+                .catch(fail)
+        })
+
+        if (typeof promi.then === 'function') {
+            promi.then((result) => {
+                if (!result) {
+                    return
+                }
+                if (typeof result === 'string') {
+                    return Vue.prototype.waitForTransactionReceipt(result, timeoutMs)
+                        .then(complete)
+                        .catch(fail)
+                }
+                if (result.transactionHash || result.blockNumber !== undefined || result.blockHash) {
+                    complete(result)
+                    return
+                }
+                if (result.hash) {
+                    return Vue.prototype.waitForTransactionReceipt(result.hash, timeoutMs)
+                        .then(complete)
+                        .catch(fail)
+                }
+            }).catch(fail)
+        }
+    })
+}
+
+Vue.prototype.sendHardwareWalletTransaction = async function (contractMethod, txParams) {
+    const config = localStorage.get('configMaster') || await getConfig()
+    const chainConfig = config.blockchain
+    const account = await Vue.prototype.getAccount()
+    if (!account) {
+        throw new Error('No wallet account found. Please log in again.')
+    }
+    const fromRpc = toRpcAddress(account)
+    const nonce = await Vue.prototype.web3.eth.getTransactionCount(fromRpc)
+    const data = await contractMethod.encodeABI()
+    const dataTx = Object.assign({
+        from: fromRpc,
+        to: toRpcAddress(chainConfig.validatorAddress),
+        data,
+        value: '0x0',
+        nonce: Vue.prototype.web3.utils.toHex(nonce),
+        chainId: chainConfig.networkId
+    }, txParams)
+
+    const signature = await Vue.prototype.signTransaction(dataTx)
+    const txHash = await Vue.prototype.sendSignedTransaction(dataTx, signature)
+    await Vue.prototype.waitForTransactionReceipt(txHash)
+    return txHash
 }
 
 Vue.prototype.signMessage = async function (message) {
     try {
         const offset = Number(localStorage.get('offset') || 0)
         const path = getLedgerPath(offset)
-        const provider = Vue.prototype.NetworkProvider
+        const provider = Vue.prototype.NetworkProvider || localStorage.get('network')
         let result
         switch (provider) {
         case 'ledger':
@@ -821,12 +1142,16 @@ Vue.prototype.signMessage = async function (message) {
                 path,
                 Buffer.from(message).toString('hex')
             )
-            let v = signature['v'] - 27
-            v = v.toString(16)
-            if (v.length < 2) {
-                v = '0' + v
+            const r = toHexBuffer(signature.r)
+            const s = toHexBuffer(signature.s)
+            let v = signature.v
+            if (typeof v === 'string') {
+                v = parseInt(v, 16)
             }
-            result = '0x' + signature['r'] + signature['s'] + v
+            if (v < 27) {
+                v += 27
+            }
+            result = ethUtils.toRpcSig(v, r, s)
             break
         case 'trezor':
             const sig = await TrezorConnect.ethereumSignMessage({
@@ -848,6 +1173,17 @@ Vue.prototype.signMessage = async function (message) {
 const EventBus = new Vue()
 
 Vue.prototype.$bus = EventBus
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection:', event.reason)
+        event.preventDefault()
+    })
+}
+
+Vue.config.errorHandler = (err, vm, info) => {
+    console.error('Vue error:', formatWalletError(err), info)
+}
 
 new Vue({ // eslint-disable-line no-new
     el: '#app',

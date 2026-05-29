@@ -5,6 +5,7 @@ const path = require('path')
 const fs = require('fs')
 const IpfsClient = require('ipfs-http-client')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
+const { recoverPersonalSignAddress } = require('../helpers/personalSign')
 
 const xinFinClient = new IpfsClient({
     host: 'ipfs.xinfin.network',
@@ -21,15 +22,25 @@ function toHexAddress (address) {
 
 function normalizeValue (value) {
     if (value === undefined || value === null) return ''
+    if (Array.isArray(value)) {
+        if (value.length === 0) return ''
+        value = value[0]
+    }
+    if (value === undefined || value === null) return ''
     return String(value).trim().replace(/^["']|["']$/g, '')
 }
 
+function addressesMatch (a, b) {
+    const aHex = toHexAddress(a)
+    const bHex = toHexAddress(b)
+    return Boolean(aHex && bHex && aHex === bHex)
+}
+
 function unauthorized (res, reason) {
-    const payload = { message: 'Unauthorized' }
-    if (process.env.NODE_ENV === 'development') {
-        payload.reason = reason
-    }
-    return res.status(401).json(payload)
+    return res.status(401).json({
+        message: 'Unauthorized',
+        reason: reason
+    })
 }
 
 if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
@@ -37,11 +48,28 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
 }
 
 router.post('/addKYC', async function (req, res, next) {
-    const account = normalizeValue(req.body.account || req.headers['x-kyc-account'] || req.query.account).toLowerCase()
-    const message = normalizeValue(req.body.message || req.headers['x-kyc-message'] || req.query.message)
-    const signedMessage = normalizeValue(req.body.signedMessage || req.headers['x-kyc-signature'] || req.query.signedMessage)
+    const account = normalizeValue(
+        req.body.account ||
+        req.headers['x-kyc-account'] ||
+        req.query.account
+    ).toLowerCase()
+    const message = normalizeValue(
+        req.body.message ||
+        req.headers['x-kyc-message'] ||
+        req.query.message
+    )
+    const signedMessage = normalizeValue(
+        req.body.signedMessage ||
+        req.headers['x-kyc-signature'] ||
+        req.query.signedMessage
+    )
 
     if (!account || !message || !signedMessage) {
+        console.warn('addKYC unauthorized: missing_auth_fields', {
+            hasBodyAccount: Boolean(req.body && req.body.account),
+            hasQueryAccount: Boolean(req.query && req.query.account),
+            hasHeaderAccount: Boolean(req.headers['x-kyc-account'])
+        })
         return unauthorized(res, 'missing_auth_fields')
     }
 
@@ -54,36 +82,45 @@ router.post('/addKYC', async function (req, res, next) {
 
     const signedTime = new Date(timestampMatch[1]).getTime()
     const currentTime = new Date().getTime()
-    const fiveMinutes = 5 * 60 * 1000
+    const fifteenMinutes = 15 * 60 * 1000
 
-    if (isNaN(signedTime) || Math.abs(currentTime - signedTime) > fiveMinutes) {
+    if (isNaN(signedTime) || Math.abs(currentTime - signedTime) > fifteenMinutes) {
+        console.warn('addKYC unauthorized: signature_expired', { signedTime, currentTime })
         return unauthorized(res, 'signature_expired')
     }
 
-    // 2. Recover Signer
-    let recovered = ''
-    const candidateMessages = [message]
-    try {
-        candidateMessages.push(web3.utils.utf8ToHex(message))
-    } catch (e) {}
-    try {
-        candidateMessages.push(web3.utils.sha3(message))
-    } catch (e) {}
-
-    for (const candidateMessage of candidateMessages) {
+    // 2. Recover Signer (Ledger / hardware wallets may use alternate v bytes)
+    let recovered = await recoverPersonalSignAddress(message, signedMessage)
+    if (!recovered) {
+        const candidateMessages = [message]
         try {
-            recovered = (await web3.eth.accounts.recover(candidateMessage, signedMessage) || '').toLowerCase()
-            if (recovered) break
+            candidateMessages.push(web3.utils.utf8ToHex(message))
         } catch (e) {}
+        try {
+            candidateMessages.push(web3.utils.sha3(message))
+        } catch (e) {}
+
+        for (const candidateMessage of candidateMessages) {
+            try {
+                recovered = (await web3.eth.accounts.recover(candidateMessage, signedMessage) || '').toLowerCase()
+                if (recovered) break
+            } catch (e) {}
+        }
     }
 
     if (!recovered) {
+        console.warn('addKYC unauthorized: signature_recover_failed', {
+            account: toHexAddress(account),
+            messageLength: message.length
+        })
         return unauthorized(res, 'signature_recover_failed')
     }
 
-    const recoveredHex = toHexAddress(recovered)
-    const accountHex = toHexAddress(account)
-    if (!recoveredHex || !accountHex || recoveredHex !== accountHex) {
+    if (!addressesMatch(recovered, account)) {
+        console.warn('addKYC unauthorized: signer_mismatch', {
+            account: toHexAddress(account),
+            recovered: toHexAddress(recovered)
+        })
         return unauthorized(res, 'signer_mismatch')
     }
 

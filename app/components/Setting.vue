@@ -565,11 +565,12 @@ export default {
                     }
                 }
 
-                if (store.get('address') && self.isReady) {
+                if (store.get('address')) {
                     account = store.get('address').toLowerCase()
-                } else {
-                    account = this.$store.state.address
-                        ? this.$store.state.address : (self.web3 ? await self.getAccount() : false)
+                } else if (this.$store.state.address) {
+                    account = this.$store.state.address.toLowerCase()
+                } else if (self.web3) {
+                    account = await self.getAccount()
                 }
 
                 if (!account) {
@@ -580,7 +581,8 @@ export default {
                 }
 
                 self.address = account
-                self.web3.eth.getBalance(self.address).then(balanceBN => {
+                const rpcAccount = self.toRpcAddress(account)
+                self.web3.eth.getBalance(rpcAccount).then(balanceBN => {
                     self.balance = new BigNumber(balanceBN).div(10 ** 18)
                 }).catch(e => {
                     self.$toasted.show('Cannot load balance', { type: 'error' })
@@ -588,48 +590,53 @@ export default {
 
                 let whPromise = axios.get(`/api/owners/${self.address}/withdraws?limit=100`)
                 if (contract) {
-                    // let blksPromise = contract.getWithdrawBlockNumbers.call({ from: account })
-                    let blksPromise = contract.methods.getWithdrawBlockNumbers().call({ from: account })
-                    // let blks = await contract.getWithdrawBlockNumbers.call({ from: account })
+                    try {
+                        let blksPromise = contract.methods.getWithdrawBlockNumbers().call({ from: rpcAccount })
+                        const blks = await blksPromise
 
-                    const blks = await blksPromise
-
-                    await Promise.all(blks.map(async (it, index) => {
-                        let blk = new BigNumber(it).toString()
-                        if (blk !== '0') {
-                            self.aw = true
-                        }
-                        console.log(blk, 'blk')
-                        let wd = {
-                            blockNumber: blk
-                        }
-                        wd.cap = new BigNumber(
-                            // await contract.getWithdrawCap.call(blk, { from: account })
-                            await contract.methods.getWithdrawCap(blk).call({ from: account })
-                        ).div(10 ** 18).toFormat()
-                        wd.estimatedTime = await self.getSecondsToHms(
-                            (wd.blockNumber - self.chainConfig.blockNumber)
-                        )
-                        self.withdraws[index] = wd
-                    }))
-                    await this.setKYCStatus(contract)
+                        await Promise.all(blks.map(async (it, index) => {
+                            let blk = new BigNumber(it).toString()
+                            if (blk !== '0') {
+                                self.aw = true
+                            }
+                            console.log(blk, 'blk')
+                            let wd = {
+                                blockNumber: blk
+                            }
+                            wd.cap = new BigNumber(
+                                await contract.methods.getWithdrawCap(blk).call({ from: rpcAccount })
+                            ).div(10 ** 18).toFormat()
+                            wd.estimatedTime = await self.getSecondsToHms(
+                                (wd.blockNumber - self.chainConfig.blockNumber)
+                            )
+                            self.withdraws[index] = wd
+                        }))
+                        await this.setKYCStatus(contract)
+                    } catch (contractError) {
+                        console.log(contractError)
+                    }
                 }
 
-                const wh = await whPromise
-
-                // let wh = await axios.get(`/api/owners/${self.address}/withdraws`)
                 self.wh = []
-                wh.data.forEach(w => {
-                    let it = {
-                        cap: new BigNumber(w.capacity).div(10 ** 18).toFormat(),
-                        tx: w.tx
-                    }
-                    self.wh.push(it)
-                })
+                try {
+                    const wh = await whPromise
+                    wh.data.forEach(w => {
+                        let it = {
+                            cap: new BigNumber(w.capacity).div(10 ** 18).toFormat(),
+                            tx: w.tx
+                        }
+                        self.wh.push(it)
+                    })
+                } catch (whError) {
+                    console.log(whError)
+                }
                 self.isReady = true
             } catch (e) {
                 console.log(e)
-                self.$toasted.show(e, {
+                const detail = self.formatWalletError
+                    ? self.formatWalletError(e)
+                    : (e && e.message ? e.message : String(e))
+                self.$toasted.show(detail, {
                     type : 'error'
                 })
             }
@@ -682,6 +689,11 @@ export default {
             let wallets
             try {
                 self.loading = true
+                if (self.provider === 'ledger' || self.provider === 'trezor') {
+                    const rpc = self.networks.rpc || self.chainConfig.rpc
+                    const httpWeb3 = new Web3(new Web3.providers.HttpProvider(rpc))
+                    await self.setupProvider(self.provider, httpWeb3)
+                }
                 store.set('hdDerivationPath', self.hdPath)
                 if (offset === 0) {
                     store.remove('ledgerDevicePath')
@@ -760,7 +772,6 @@ export default {
             var wjs = false
             self.loading = true
             try {
-                let offset
                 switch (self.provider) {
                 case 'connect-wallet':
                     let ethereumProvider = await this.walletConnectProvider(self.chainConfig)
@@ -789,18 +800,18 @@ export default {
                     }
                     break
                 case 'ledger':
-                    wjs = new Web3(new Web3.providers.HttpProvider(self.networks.rpc))
-                    offset = self.selectedHdWalletIndex
-                    store.set('hdDerivationPath', self.hdPath)
-                    store.set('offset', offset)
-                    store.set('network', self.provider)
-                    break
                 case 'trezor':
-                    wjs = new Web3(new Web3.providers.HttpProvider(self.networks.rpc))
-                    offset = self.selectedHdWalletIndex
                     store.set('hdDerivationPath', self.hdPath)
-                    store.set('offset', offset)
+                    store.set('offset', String(self.selectedHdWalletIndex))
                     store.set('network', self.provider)
+                    if (selectedAddress) {
+                        store.set('address', selectedAddress.toLowerCase())
+                    }
+                    await self.detectNetwork(self.provider)
+                    if (!self.web3) {
+                        throw new Error('Could not initialize the Ledger provider. Reconnect your device and try again.')
+                    }
+                    wjs = self.web3
                     break
                 default:
                     self.mnemonic = self.mnemonic.trim()
@@ -813,15 +824,14 @@ export default {
                     wjs = new Web3(walletProvider)
                     break
                 }
-                await self.setupProvider(this.provider, wjs)
+                if (wjs) {
+                    await self.setupProvider(this.provider, wjs)
+                }
                 await self.setupAccount()
 
                 if (isHardwareWallet && selectedAddress) {
-                    const loggedInAddress = self.toRpcAddress(self.address || '')
-                    const expectedAddress = self.toRpcAddress(selectedAddress)
-                    if (loggedInAddress !== expectedAddress) {
-                        throw new Error('Logged in address does not match the selected wallet.')
-                    }
+                    self.address = selectedAddress.toLowerCase()
+                    store.set('address', self.address)
                 }
 
                 self.loading = false
@@ -832,9 +842,6 @@ export default {
                     self.$store.state.address = normalizedAddress
                     store.set('address', normalizedAddress)
                     store.set('network', self.provider)
-                    if (self.provider === 'ledger') {
-                        self.ledgerPayload = ''
-                    }
                     self.showHdWalletModal = false
                     self.$bus.$emit('logged', 'user logged')
                     self.$toasted.show('Logged in successfully')
@@ -843,7 +850,10 @@ export default {
                 }
             } catch (e) {
                 self.loading = false
-                self.$toasted.show('There are some errors when changing the network provider', {
+                const detail = self.formatWalletError
+                    ? self.formatWalletError(e)
+                    : (e && e.message ? e.message : String(e))
+                self.$toasted.show(detail || 'There are some errors when changing the network provider', {
                     type : 'error'
                 })
                 console.log(e)

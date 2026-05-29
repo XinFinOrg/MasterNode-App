@@ -1,6 +1,6 @@
 'use strict'
 const express = require('express')
-const axios = require('axios')
+// const axios = require('axios')
 const router = express.Router()
 const db = require('../models/mongodb')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
