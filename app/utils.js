@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js'
-import XDCValidatorArtifacts from '../build/contracts/XDCValidator.json'
+import XDCValidatorArtifacts from '../contracts/XDCValidator.json'
 
 const Helper = {
     getCurrencySymbol () {

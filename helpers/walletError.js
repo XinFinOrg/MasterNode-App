@@ -67,7 +67,7 @@ function toWalletError (error) {
     return new Error(formatWalletError(error))
 }
 
-module.exports = {
+export {
     formatWalletError,
     toWalletError
 }

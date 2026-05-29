@@ -1,6 +1,6 @@
 'use strict'
 
-const BlockSignerABI = require('../../build/contracts/BlockSigner')
+const BlockSignerABI = require('../../contracts/BlockSigner')
 const config = require('config')
 
 function BlockSigner (web3) {

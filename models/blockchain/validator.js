@@ -1,6 +1,6 @@
 'use strict'
 
-const ValidatorABI = require('../../build/contracts/XDCValidator')
+const ValidatorABI = require('../../contracts/XDCValidator')
 const config = require('config')
 
 function Validator (web3) {
