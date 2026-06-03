@@ -280,6 +280,9 @@ export default {
             }, 0)
         },
         signOut () {
+            if (this.resetWalletSession) {
+                this.resetWalletSession()
+            }
             store.clearAll()
             Object.assign(this.$store.state, this.getDefaultState())
             // this.$store.state.address = null

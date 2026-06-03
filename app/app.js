@@ -23,7 +23,11 @@ import Vuex from 'vuex'
 // import HDWalletProvider from 'truffle-hdwallet-provider'
 import { HDWalletProvider } from '../helpers.js'
 import { createLedgerWeb3Provider } from '../helpers/ledgerWeb3Provider.js'
-import { formatWalletError, toWalletError } from '../helpers/walletError.js'
+import {
+    formatWalletError,
+    toWalletError,
+    isWalletConnectUserCancelError
+} from '../helpers/walletError.js'
 import localStorage from 'store'
 // Libusb is included as a submodule.
 // On Linux, you'll need libudev to build libusb.
@@ -434,6 +438,37 @@ Vue.prototype.isElectron = !!(window && window.process && window.process.type)
 let walletConnectProviderInstance = null
 let walletConnectInitPromise = null
 
+const WALLETCONNECT_PROJECT_ID_HELP =
+    'WalletConnect needs a valid 32-character project ID. ' +
+    'Create one at https://cloud.walletconnect.com, set WALLETCONNECT_PROJECT_ID in .env, ' +
+    'add https://localhost:5000 to the project allowlist, then restart the server.'
+
+const resolveWalletConnectProjectId = (blockchain) => {
+    const projectId = blockchain && blockchain.walletconnectProjectId
+    return typeof projectId === 'string' ? projectId.trim() : ''
+}
+
+const isValidWalletConnectProjectId = (projectId) =>
+    typeof projectId === 'string' && /^[a-f0-9]{32}$/i.test(projectId.trim())
+
+const assertWalletConnectConfigured = (blockchain) => {
+    const projectId = resolveWalletConnectProjectId(blockchain)
+    if (!isValidWalletConnectProjectId(projectId)) {
+        throw new Error(WALLETCONNECT_PROJECT_ID_HELP)
+    }
+    return projectId
+}
+
+const resetWalletConnectProvider = () => {
+    if (walletConnectProviderInstance && typeof walletConnectProviderInstance.disconnect === 'function') {
+        try {
+            walletConnectProviderInstance.disconnect()
+        } catch (e) {}
+    }
+    walletConnectProviderInstance = null
+    walletConnectInitPromise = null
+}
+
 const getWalletConnectProvider = async (showQrModal, blockchain) => {
     if (walletConnectProviderInstance) {
         return walletConnectProviderInstance
@@ -446,8 +481,10 @@ const getWalletConnectProvider = async (showQrModal, blockchain) => {
         ? window.location.origin
         : 'https://master.xinfin.network'
 
+    const projectId = assertWalletConnectConfigured(blockchain)
+
     walletConnectInitPromise = EthereumProvider.init({
-        projectId: blockchain.walletconnectProjectId,
+        projectId: projectId,
         showQrModal: showQrModal,
         qrModalOptions: { themeMode: 'light' },
         chains: [50],
@@ -466,15 +503,52 @@ const getWalletConnectProvider = async (showQrModal, blockchain) => {
     }).then((provider) => {
         walletConnectProviderInstance = provider
         return provider
+    }).catch((error) => {
+        walletConnectInitPromise = null
+        throw error
     })
 
     return walletConnectInitPromise
 }
 
-// wallet-connect global provider
-Vue.prototype.walletConnectProvider = async (projectId) => {
-    return getWalletConnectProvider(true, projectId)
+Vue.prototype.resetWalletConnectProvider = resetWalletConnectProvider
+Vue.prototype.isWalletConnectConfigured = (blockchain) =>
+    isValidWalletConnectProjectId(resolveWalletConnectProjectId(blockchain))
+
+Vue.prototype.resetWalletSession = function () {
+    if (Vue.prototype.appEth && Vue.prototype.appEth.transport) {
+        try {
+            Vue.prototype.appEth.transport.close()
+        } catch (e) {}
+    }
+    Vue.prototype.NetworkProvider = null
+    Vue.prototype.web3 = null
+    Vue.prototype.XDCValidator = null
+    Vue.prototype.appEth = null
+    Vue.prototype.ledgerPayload = null
+    Vue.prototype.trezorPayload = null
+    Vue.prototype.ledgerCoinType = undefined
+    resetWalletConnectProvider()
 }
+
+// wallet-connect global provider (always starts a fresh session for login)
+Vue.prototype.walletConnectProvider = async (blockchain) => {
+    resetWalletConnectProvider()
+    return getWalletConnectProvider(true, blockchain)
+}
+
+Vue.prototype.connectWalletConnect = async function (blockchain) {
+    const provider = await Vue.prototype.walletConnectProvider(blockchain)
+    try {
+        await provider.connect()
+    } catch (error) {
+        resetWalletConnectProvider()
+        throw error
+    }
+    return provider
+}
+
+Vue.prototype.isWalletConnectUserCancelError = isWalletConnectUserCancelError
 
 Vue.prototype.setupProvider = async function (provider, wjs) {
     Vue.prototype.NetworkProvider = provider
@@ -747,6 +821,10 @@ router.beforeEach(async (to, from, next) => {
 })
 
 getConfig().then((config) => {
+    if (localStorage.get('network') === 'connect-wallet' &&
+        !isValidWalletConnectProjectId(resolveWalletConnectProjectId(config.blockchain))) {
+        localStorage.remove('network')
+    }
     // let provider = 'XDCwallet'
     // var web3js = new Web3(new Web3.providers.HttpProvider(config.blockchain.internalRpc))
     // Vue.prototype.setupProvider(provider, web3js)
@@ -794,6 +872,10 @@ Vue.prototype.detectNetwork = async function (provider) {
         let wjs
         switch (provider) {
         case 'connect-wallet': {
+            if (!isValidWalletConnectProjectId(resolveWalletConnectProjectId(chainConfig))) {
+                localStorage.remove('network')
+                break
+            }
             const ewjs = await getWalletConnectProvider(false, chainConfig)
             if (ewjs.connected) {
                 ewjs.on('disconnect', (code, reason) => {
@@ -1176,6 +1258,10 @@ Vue.prototype.$bus = EventBus
 
 if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
+        if (isWalletConnectUserCancelError(event.reason)) {
+            event.preventDefault()
+            return
+        }
         console.error('Unhandled promise rejection:', event.reason)
         event.preventDefault()
     })
