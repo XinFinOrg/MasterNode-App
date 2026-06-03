@@ -2,6 +2,22 @@
 
 const LEDGER_REJECT_CODES = [0x6985, 27013, '6985']
 
+const WALLETCONNECT_CANCEL_PATTERN =
+    /connection request reset|user rejected|user closed|cancelled|canceled|modal closed|pairing cancelled|rejected/i
+
+function isWalletConnectUserCancelError (error) {
+    if (!error) {
+        return false
+    }
+    const parts = [
+        error.message,
+        error.reason,
+        typeof error === 'string' ? error : ''
+    ].filter(Boolean).map((part) => String(part))
+
+    return parts.some((text) => WALLETCONNECT_CANCEL_PATTERN.test(text))
+}
+
 function formatWalletError (error) {
     if (!error) {
         return 'Unknown wallet error'
@@ -10,7 +26,14 @@ function formatWalletError (error) {
         return error
     }
     if (error instanceof Error && error.message) {
+        if (isWalletConnectUserCancelError(error)) {
+            return 'Wallet connection cancelled.'
+        }
         return formatWalletError(error.message)
+    }
+
+    if (isWalletConnectUserCancelError(error)) {
+        return 'Wallet connection cancelled.'
     }
 
     const statusCode = error.statusCode || error.id
@@ -69,5 +92,6 @@ function toWalletError (error) {
 
 export {
     formatWalletError,
-    toWalletError
+    toWalletError,
+    isWalletConnectUserCancelError
 }

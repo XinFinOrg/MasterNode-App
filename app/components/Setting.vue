@@ -67,6 +67,12 @@
                                     <small
                                         v-if="provider !== 'metamask' && provider !== 'xinpay'"
                                         class="form-text text-muted">Using node at {{ chainConfig.rpc }}.</small>
+                                    <small
+                                        v-if="provider === 'connect-wallet' && !walletConnectConfigured"
+                                        class="form-text text-danger">
+                                        WalletConnect is not configured. Set WALLETCONNECT_PROJECT_ID (32 characters)
+                                        in .env, add https://localhost:5000 to your project allowlist, and restart the server.
+                                    </small>
                                 </b-input-group>
                             </b-form-group>
                             <!-- <b-form-group
@@ -526,6 +532,11 @@ export default {
             const isAndroid = navigator.userAgent.match(/Android/i)
             const isIOS = navigator.userAgent.match(/iPhone|iPad|iPod/i)
             return (isAndroid || isIOS)
+        },
+        walletConnectConfigured () {
+            return this.isWalletConnectConfigured
+                ? this.isWalletConnectConfigured(this.chainConfig)
+                : false
         }
     },
     watch: {},
@@ -666,6 +677,13 @@ export default {
         },
         validate: function () {
             if (this.provider === 'connect-wallet') {
+                if (!this.walletConnectConfigured) {
+                    this.$toasted.show(
+                        'WalletConnect is not configured. Set WALLETCONNECT_PROJECT_ID in .env and restart the server.',
+                        { type: 'error' }
+                    )
+                    return
+                }
                 this.save()
             }
             if (this.provider === 'metamask' || this.provider === 'xinpay') {
@@ -749,8 +767,24 @@ export default {
                 return
             }
 
-            if (!isHardwareWallet) {
+            const deferStoreClearUntilConnected = self.provider === 'connect-wallet' ||
+                self.provider === 'metamask' ||
+                self.provider === 'xinpay'
+
+            if (!isHardwareWallet && !deferStoreClearUntilConnected) {
+                if (self.resetWalletSession) {
+                    self.resetWalletSession()
+                }
                 store.clearAll()
+            } else if (self.provider === 'connect-wallet') {
+                if (self.resetWalletConnectProvider) {
+                    self.resetWalletConnectProvider()
+                }
+                store.remove('address')
+                store.remove('network')
+            } else if (deferStoreClearUntilConnected) {
+                store.remove('address')
+                store.remove('network')
             } else {
                 const keepConfig = store.get('configMaster')
                 const keepLedgerDevicePath = store.get('ledgerDevicePath')
@@ -773,9 +807,10 @@ export default {
             self.loading = true
             try {
                 switch (self.provider) {
-                case 'connect-wallet':
-                    let ethereumProvider = await this.walletConnectProvider(self.chainConfig)
-                    await ethereumProvider.connect()
+                case 'connect-wallet': {
+                    self.config = await self.appConfig()
+                    self.chainConfig = self.config.blockchain || {}
+                    let ethereumProvider = await this.connectWalletConnect(self.chainConfig)
                     self.address = ethereumProvider.accounts[0]
                     ethereumProvider.on('disconnect', (code, reason) => {
                         store.clearAll()
@@ -787,6 +822,7 @@ export default {
                     })
                     wjs = new Web3(ethereumProvider)
                     break
+                }
                 case 'metamask':
                     if (window.web3) {
                         const p = window.web3.currentProvider
@@ -837,6 +873,13 @@ export default {
                 self.loading = false
 
                 if (self.address) {
+                    if (deferStoreClearUntilConnected) {
+                        const keepConfig = store.get('configMaster') || self.config
+                        store.clearAll()
+                        if (keepConfig) {
+                            store.set('configMaster', keepConfig)
+                        }
+                    }
                     const normalizedAddress = self.address.toLowerCase()
                     self.address = normalizedAddress
                     self.$store.state.address = normalizedAddress
@@ -850,6 +893,11 @@ export default {
                 }
             } catch (e) {
                 self.loading = false
+                if (self.provider === 'connect-wallet' && self.isWalletConnectUserCancelError &&
+                    self.isWalletConnectUserCancelError(e)) {
+                    self.$toasted.show('Wallet connection cancelled.', { type: 'info' })
+                    return
+                }
                 const detail = self.formatWalletError
                     ? self.formatWalletError(e)
                     : (e && e.message ? e.message : String(e))
@@ -898,6 +946,14 @@ export default {
                 break
             case 'ledger':
                 this.hdPath = store.get('hdDerivationPath') || this.hdPath
+                break
+            case 'connect-wallet':
+            case 'metamask':
+            case 'custom':
+            case 'xinpay':
+                if (this.resetWalletSession) {
+                    this.resetWalletSession()
+                }
                 break
             default:
                 if (this.interval) {

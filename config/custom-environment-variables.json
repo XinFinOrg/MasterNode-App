@@ -6,7 +6,8 @@
   "blockchain": {
       "rpc": "BC_RPC",
       "ws": "BC_WS",
-      "networkId": "BC_NETWORK_ID"
+      "networkId": "BC_NETWORK_ID",
+      "walletconnectProjectId": "WALLETCONNECT_PROJECT_ID"
   },
   "explorerUrl": "XDCSCAN_SITE_URL",
   "XDCscanUrl": "XDCSCAN_API_URL",

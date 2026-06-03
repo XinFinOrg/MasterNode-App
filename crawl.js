@@ -1,5 +1,7 @@
 'use strict'
 
+require('dotenv').config()
+
 const Validator = require('./models/blockchain/validator')
 const Web3Ws = require('./models/blockchain/web3ws').Web3WsInternal
 const web3Rpc = require('./models/blockchain/web3rpc').Web3RpcInternal()
