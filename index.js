@@ -26,7 +26,7 @@ app.use(helmet({
             defaultSrc: ['\'self\''],
             scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\'', 'https://www.google-analytics.com', 'https://www.googletagmanager.com'],
             styleSrc: ['\'self\'', '\'unsafe-inline\''],
-            imgSrc: ['\'self\'', 'data:', 'https:', 'http:', 'https://www.google-analytics.com'],
+            imgSrc: ['\'self\'', 'data:', 'blob:', 'https:', 'http:', 'https://www.google-analytics.com'],
             connectSrc: ['\'self\'', 'https:', 'wss:', 'http:', 'ws:', 'https://www.google-analytics.com'],
             fontSrc: ['\'self\'', 'data:', 'https:'],
             objectSrc: ['\'none\''],

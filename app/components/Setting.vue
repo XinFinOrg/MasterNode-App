@@ -567,10 +567,23 @@ export default {
                 if (!self.web3 && self.NetworkProvider === 'xinpay') {
                     throw Error('Web3 is not properly detected. Have you installed XinPay extension?')
                 }
-                if (self.web3) {
+
+                const useHttpReads = self.shouldUseHttpForChainReads && self.shouldUseHttpForChainReads()
+                const readWeb3 = useHttpReads
+                    ? (self.getHttpWeb3 && self.getHttpWeb3(self.chainConfig.rpc)) || self.web3
+                    : self.web3
+
+                if (readWeb3) {
                     try {
-                        contract = self.XDCValidator
-                        self.gasPrice = await self.web3.eth.getGasPrice()
+                        if (useHttpReads) {
+                            contract = new readWeb3.eth.Contract(
+                                Helper.XDCValidatorArtifacts.abi,
+                                self.chainConfig.validatorAddress
+                            )
+                        } else {
+                            contract = self.XDCValidator
+                        }
+                        self.gasPrice = await readWeb3.eth.getGasPrice()
                     } catch (error) {
                         self.$toasted.show('Make sure you choose correct XDC Network network.')
                     }
@@ -593,11 +606,17 @@ export default {
 
                 self.address = account
                 const rpcAccount = self.toRpcAddress(account)
-                self.web3.eth.getBalance(rpcAccount).then(balanceBN => {
-                    self.balance = new BigNumber(balanceBN).div(10 ** 18)
-                }).catch(e => {
-                    self.$toasted.show('Cannot load balance', { type: 'error' })
-                })
+                const balanceWeb3 = readWeb3 ||
+                    (self.getHttpWeb3 && self.getHttpWeb3(self.chainConfig.rpc || self.networks.rpc)) ||
+                    self.web3
+                if (balanceWeb3) {
+                    balanceWeb3.eth.getBalance(rpcAccount).then(balanceBN => {
+                        self.balance = new BigNumber(balanceBN).div(10 ** 18)
+                    }).catch(e => {
+                        console.log(e)
+                        self.$toasted.show('Cannot load balance', { type: 'error' })
+                    })
+                }
 
                 let whPromise = axios.get(`/api/owners/${self.address}/withdraws?limit=100`)
                 if (contract) {
@@ -658,6 +677,14 @@ export default {
                 self.interval = setInterval(async () => {
                     await this.getLoginResult()
                 }, 3000)
+            }
+        }
+        const storedNetwork = store.get('network') || self.NetworkProvider
+        if (storedNetwork && (store.get('address') || self.$store.state.address)) {
+            try {
+                await self.detectNetwork(storedNetwork)
+            } catch (networkError) {
+                console.log(networkError)
             }
         }
         await self.setupAccount()
@@ -811,6 +838,11 @@ export default {
                     self.config = await self.appConfig()
                     self.chainConfig = self.config.blockchain || {}
                     let ethereumProvider = await this.connectWalletConnect(self.chainConfig)
+                    if (self.scheduleWalletConnectModalClose) {
+                        self.scheduleWalletConnectModalClose(ethereumProvider)
+                    } else if (self.closeWalletConnectModal) {
+                        await self.closeWalletConnectModal(ethereumProvider)
+                    }
                     self.address = ethereumProvider.accounts[0]
                     ethereumProvider.on('disconnect', (code, reason) => {
                         store.clearAll()

@@ -541,13 +541,15 @@ export default {
             }
         },
         async getKYCStatus (account) {
-            // let contract = await this.getXDCValidatorInstance()
-            let contract = this.XDCValidator
+            const rpcAccount = this.toRpcAddress(account)
+            const contract = (this.shouldUseHttpForChainReads && this.shouldUseHttpForChainReads())
+                ? this.getValidatorContract(true)
+                : this.XDCValidator
             if (contract) {
                 console.log('getKYC')
-                const isHashFound = await contract.methods.getHashCount(account).call()
+                const isHashFound = await contract.methods.getHashCount(rpcAccount).call()
                 if (new BigNumber(isHashFound).toNumber()) {
-                    const getKYC = await contract.methods.getLatestKYC(account).call()
+                    const getKYC = await contract.methods.getLatestKYC(rpcAccount).call()
                     // const KYCString = await contract.KYCString.call(account)
                     console.log(getKYC, 'getKYC')
                     this.KYC.status = getKYC
@@ -588,20 +590,7 @@ export default {
                     }
                     const now = new Date().toISOString()
                     const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
-                    let signedMessage
-                    if (network === 'ledger' || network === 'trezor') {
-                        signedMessage = await this.signMessage(message)
-                    } else {
-                        try {
-                            signedMessage = await this.web3.eth.personal.sign(
-                                message,
-                                signerAccount,
-                                ''
-                            )
-                        } catch (e) {
-                            signedMessage = await this.web3.eth.sign(message, signerAccount)
-                        }
-                    }
+                    const signedMessage = await this.signPersonalMessage(message, signerAccount)
 
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
                     formData.append('account', signerAccount)
@@ -619,14 +608,14 @@ export default {
                             'x-kyc-signature': signedMessage
                         }
                     })
-                    let contract// = await self.getXDCValidatorInstance()
-                    contract = self.XDCValidator
-                    const currentGasPrice = this.web3.utils.toBN(await this.web3.eth.getGasPrice())
+                    const contract = self.XDCValidator
+                    const readWeb3 = (this.getChainReadWeb3 && this.getChainReadWeb3()) || this.web3
+                    const currentGasPrice = readWeb3.utils.toBN(await readWeb3.eth.getGasPrice())
                     const gasPrice = currentGasPrice.muln(14).divn(10)
                     const txOptions = {
-                        gasPrice: this.web3.utils.toHex(gasPrice),
-                        gas: this.web3.utils.toHex(3000000),
-                        gasLimit: this.web3.utils.toHex(3000000)
+                        gasPrice: readWeb3.utils.toHex(gasPrice),
+                        gas: readWeb3.utils.toHex(3000000),
+                        gasLimit: readWeb3.utils.toHex(3000000)
                     }
                     if (network === 'ledger' || network === 'trezor') {
                         await this.sendHardwareWalletTransaction(
@@ -634,8 +623,14 @@ export default {
                             txOptions
                         )
                     } else {
-                        const fromAccount = (this.account || store.get('address') || '').toLowerCase()
-                        const txParams = Object.assign({ from: fromAccount }, txOptions)
+                        const fromAccount = this.toRpcAddress(
+                            this.account || store.get('address') || (await this.getAccount()) || ''
+                        ).toLowerCase()
+                        const chainId = this.chainConfig.networkId
+                        const txParams = Object.assign(
+                            { from: fromAccount, chainId: chainId },
+                            txOptions
+                        )
                         await this.sendContractTransaction(
                             contract.methods.uploadKYC(data.hash),
                             txParams

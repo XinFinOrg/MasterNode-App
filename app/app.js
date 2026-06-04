@@ -459,11 +459,72 @@ const assertWalletConnectConfigured = (blockchain) => {
     return projectId
 }
 
-const resetWalletConnectProvider = () => {
-    if (walletConnectProviderInstance && typeof walletConnectProviderInstance.disconnect === 'function') {
+let appKitControllersPromise = null
+
+const getAppKitControllers = () => {
+    if (!appKitControllersPromise) {
+        appKitControllersPromise = import('@reown/appkit-controllers')
+    }
+    return appKitControllersPromise
+}
+
+const forceHideWalletConnectModalElements = () => {
+    document.querySelectorAll('w3m-modal').forEach((modalEl) => {
+        modalEl.classList.remove('open')
+        if (typeof modalEl.onClose === 'function') {
+            modalEl.onClose()
+        }
+    })
+    document.head.querySelectorAll('style[data-w3m="scroll-lock"]').forEach((el) => {
+        el.remove()
+    })
+    if (document.body) {
+        document.body.style.removeProperty('overflow')
+        document.body.style.removeProperty('touch-action')
+    }
+}
+
+const closeWalletConnectModal = async (provider) => {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    if (provider && provider.modal && typeof provider.modal.close === 'function') {
         try {
-            walletConnectProviderInstance.disconnect()
-        } catch (e) {}
+            await provider.modal.close()
+        } catch (e) {
+            console.log(e)
+        }
+    }
+
+    try {
+        const { ModalController, PublicStateController } = await getAppKitControllers()
+        ModalController.close()
+        PublicStateController.set({ open: false, loading: false })
+    } catch (e) {
+        console.log(e)
+    }
+
+    forceHideWalletConnectModalElements()
+}
+
+const scheduleWalletConnectModalClose = (provider) => {
+    const run = () => closeWalletConnectModal(provider).catch(() => {})
+    run()
+    ;[50, 200, 600].forEach((delay) => {
+        window.setTimeout(run, delay)
+    })
+}
+
+const resetWalletConnectProvider = () => {
+    const instance = walletConnectProviderInstance
+    if (instance) {
+        closeWalletConnectModal(instance).catch(() => {})
+        if (typeof instance.disconnect === 'function') {
+            try {
+                instance.disconnect()
+            } catch (e) {}
+        }
     }
     walletConnectProviderInstance = null
     walletConnectInitPromise = null
@@ -539,14 +600,22 @@ Vue.prototype.walletConnectProvider = async (blockchain) => {
 
 Vue.prototype.connectWalletConnect = async function (blockchain) {
     const provider = await Vue.prototype.walletConnectProvider(blockchain)
+    provider.once('connect', () => {
+        scheduleWalletConnectModalClose(provider)
+    })
     try {
         await provider.connect()
+        scheduleWalletConnectModalClose(provider)
     } catch (error) {
+        await closeWalletConnectModal(provider)
         resetWalletConnectProvider()
         throw error
     }
     return provider
 }
+
+Vue.prototype.closeWalletConnectModal = closeWalletConnectModal
+Vue.prototype.scheduleWalletConnectModalClose = scheduleWalletConnectModalClose
 
 Vue.prototype.isWalletConnectUserCancelError = isWalletConnectUserCancelError
 
@@ -561,6 +630,42 @@ Vue.prototype.setupProvider = async function (provider, wjs) {
             config.blockchain.validatorAddress
         )
     }
+}
+
+/** HTTP RPC for read-only calls; WalletConnect cannot reliably serve eth_getBalance on XDC. */
+Vue.prototype.getHttpWeb3 = function (rpcUrl) {
+    const config = localStorage.get('configMaster')
+    const rpc = rpcUrl ||
+        (config && config.blockchain && config.blockchain.rpc) ||
+        null
+    if (!rpc) {
+        return null
+    }
+    return new Web3(new Web3.providers.HttpProvider(rpc))
+}
+
+Vue.prototype.shouldUseHttpForChainReads = function () {
+    const provider = Vue.prototype.NetworkProvider || localStorage.get('network') || ''
+    return provider === 'connect-wallet'
+}
+
+Vue.prototype.getChainReadWeb3 = function () {
+    if (Vue.prototype.shouldUseHttpForChainReads()) {
+        return Vue.prototype.getHttpWeb3() || Vue.prototype.web3
+    }
+    return Vue.prototype.web3
+}
+
+Vue.prototype.getValidatorContract = function (forReadOnly) {
+    const config = localStorage.get('configMaster')
+    const validatorAddress = config && config.blockchain && config.blockchain.validatorAddress
+    const wjs = forReadOnly || Vue.prototype.shouldUseHttpForChainReads()
+        ? Vue.prototype.getHttpWeb3()
+        : Vue.prototype.web3
+    if (!wjs || !validatorAddress) {
+        return Vue.prototype.XDCValidator
+    }
+    return new wjs.eth.Contract(Helper.XDCValidatorArtifacts.abi, validatorAddress)
 }
 
 Vue.prototype.getAccount = async function () {
@@ -1209,6 +1314,42 @@ Vue.prototype.sendHardwareWalletTransaction = async function (contractMethod, tx
     const txHash = await Vue.prototype.sendSignedTransaction(dataTx, signature)
     await Vue.prototype.waitForTransactionReceipt(txHash)
     return txHash
+}
+
+Vue.prototype.signPersonalMessage = async function (message, accountOverride) {
+    const provider = Vue.prototype.NetworkProvider || localStorage.get('network') || ''
+    const account = toRpcAddress(
+        accountOverride ||
+        localStorage.get('address') ||
+        (await Vue.prototype.getAccount()) ||
+        ''
+    ).toLowerCase()
+
+    if (provider === 'ledger' || provider === 'trezor') {
+        return Vue.prototype.signMessage(message)
+    }
+
+    if (!Vue.prototype.web3) {
+        throw new Error('No wallet connected. Please log in again.')
+    }
+
+    const hexMessage = Vue.prototype.web3.utils.utf8ToHex(message)
+    const attempts = [
+        () => Vue.prototype.web3.eth.personal.sign(hexMessage, account, ''),
+        () => Vue.prototype.web3.eth.personal.sign(message, account, ''),
+        () => Vue.prototype.web3.eth.sign(hexMessage, account),
+        () => Vue.prototype.web3.eth.sign(message, account)
+    ]
+
+    let lastError
+    for (let i = 0; i < attempts.length; i++) {
+        try {
+            return await attempts[i]()
+        } catch (error) {
+            lastError = error
+        }
+    }
+    throw toWalletError(lastError)
 }
 
 Vue.prototype.signMessage = async function (message) {
