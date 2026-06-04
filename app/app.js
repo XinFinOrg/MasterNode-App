@@ -651,7 +651,7 @@ Vue.prototype.shouldUseHttpForChainReads = function () {
 
 Vue.prototype.getChainReadWeb3 = function () {
     if (Vue.prototype.shouldUseHttpForChainReads()) {
-        return Vue.prototype.getHttpWeb3()
+        return Vue.prototype.getHttpWeb3() || Vue.prototype.web3
     }
     return Vue.prototype.web3
 }
