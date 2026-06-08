@@ -590,7 +590,22 @@ export default {
                     }
                     const now = new Date().toISOString()
                     const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
-                    const signedMessage = await this.signPersonalMessage(message, signerAccount)
+                    let signedMessage
+                    if (network === 'ledger' || network === 'trezor') {
+                        signedMessage = await this.signMessage(message)
+                    } else if (network === 'connect-wallet') {
+                        signedMessage = await this.signPersonalMessage(message, signerAccount)
+                    } else {
+                        try {
+                            signedMessage = await this.web3.eth.personal.sign(
+                                message,
+                                signerAccount,
+                                ''
+                            )
+                        } catch (e) {
+                            signedMessage = await this.web3.eth.sign(message, signerAccount)
+                        }
+                    }
 
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
                     formData.append('account', signerAccount)
@@ -609,32 +624,54 @@ export default {
                         }
                     })
                     const contract = self.XDCValidator
-                    const readWeb3 = (this.getChainReadWeb3 && this.getChainReadWeb3()) || this.web3
-                    const currentGasPrice = readWeb3.utils.toBN(await readWeb3.eth.getGasPrice())
-                    const gasPrice = currentGasPrice.muln(14).divn(10)
-                    const txOptions = {
-                        gasPrice: readWeb3.utils.toHex(gasPrice),
-                        gas: readWeb3.utils.toHex(3000000),
-                        gasLimit: readWeb3.utils.toHex(3000000)
+                    if (!self.gasPrice) {
+                        self.gasPrice = await self.web3.eth.getGasPrice()
                     }
                     if (network === 'ledger' || network === 'trezor') {
+                        const txOptions = {
+                            gasPrice: self.web3.utils.toHex(self.gasPrice),
+                            gas: self.web3.utils.toHex(self.chainConfig.gas),
+                            gasLimit: self.web3.utils.toHex(self.chainConfig.gas)
+                        }
                         await this.sendHardwareWalletTransaction(
                             contract.methods.uploadKYC(data.hash),
                             txOptions
                         )
                     } else {
-                        const fromAccount = this.toRpcAddress(
-                            this.account || store.get('address') || (await this.getAccount()) || ''
-                        ).toLowerCase()
-                        const chainId = this.chainConfig.networkId
-                        const txParams = Object.assign(
-                            { from: fromAccount, chainId: chainId },
-                            txOptions
-                        )
-                        await this.sendContractTransaction(
-                            contract.methods.uploadKYC(data.hash),
-                            txParams
-                        )
+                        const account = (await self.getAccount() || '').toLowerCase()
+                        const txParams = {
+                            from: account,
+                            gasPrice: self.web3.utils.toHex(self.gasPrice),
+                            gas: self.web3.utils.toHex(self.chainConfig.gas),
+                            gasLimit: self.web3.utils.toHex(self.chainConfig.gas),
+                            chainId: self.chainConfig.networkId
+                        }
+                        await new Promise((resolve, reject) => {
+                            let settled = false
+                            const done = (result) => {
+                                if (settled) {
+                                    return
+                                }
+                                settled = true
+                                resolve(result)
+                            }
+                            const fail = (err) => {
+                                if (settled) {
+                                    return
+                                }
+                                settled = true
+                                reject(err)
+                            }
+                            contract.methods.uploadKYC(data.hash).send(txParams)
+                                .once('error', fail)
+                                .once('receipt', done)
+                                .on('transactionHash', (txHash) => {
+                                    if (self.waitForTransactionReceipt) {
+                                        self.waitForTransactionReceipt(txHash).then(done).catch(fail)
+                                    }
+                                })
+                                .catch(fail)
+                        })
                     }
                     await new Promise(resolve => setTimeout(resolve, 2000))
                     await this.getKYCStatus(signerAccount)
