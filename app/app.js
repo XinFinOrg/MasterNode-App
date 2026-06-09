@@ -659,8 +659,8 @@ Vue.prototype.getChainReadWeb3 = function () {
 Vue.prototype.getValidatorContract = function (forReadOnly) {
     const config = localStorage.get('configMaster')
     const validatorAddress = config && config.blockchain && config.blockchain.validatorAddress
-    const wjs = forReadOnly || Vue.prototype.shouldUseHttpForChainReads()
-        ? Vue.prototype.getHttpWeb3()
+    const wjs = (forReadOnly || Vue.prototype.shouldUseHttpForChainReads())
+        ? (Vue.prototype.getHttpWeb3() || Vue.prototype.web3)
         : Vue.prototype.web3
     if (!wjs || !validatorAddress) {
         return Vue.prototype.XDCValidator
