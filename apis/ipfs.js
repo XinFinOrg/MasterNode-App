@@ -53,9 +53,6 @@ function addFileToXinfinIpfs (buffer, filename, callback) {
         maxBodyLength: Infinity,
         maxContentLength: Infinity
     }).then((response) => {
-        if (response.status >= 400) {
-            return callback(new Error(`IPFS API returned ${response.status}`))
-        }
         const hash = response.data && response.data.Hash
         if (!hash) {
             return callback(new Error('IPFS API did not return a hash'))
