@@ -126,7 +126,12 @@ router.post('/addKYC', async function (req, res, next) {
         }
     }
 
-    if (!recovered) {
+    let isValidEIP1271 = false
+    if (!recovered || !addressesMatch(recovered, account)) {
+        isValidEIP1271 = await isValidEIP1271Signature(account, message, signedMessage)
+    }
+
+    if (!recovered && !isValidEIP1271) {
         console.warn('addKYC unauthorized: signature_recover_failed', {
             account: toHexAddress(account),
             messageLength: message.length
@@ -134,15 +139,12 @@ router.post('/addKYC', async function (req, res, next) {
         return unauthorized(res, 'signature_recover_failed')
     }
 
-    if (!addressesMatch(recovered, account)) {
-        const isValid = await isValidEIP1271Signature(account, message, signedMessage)
-        if (!isValid) {
-            console.warn('addKYC unauthorized: signer_mismatch', {
-                account: toHexAddress(account),
-                recovered: toHexAddress(recovered)
-            })
-            return unauthorized(res, 'signer_mismatch')
-        }
+    if (recovered && !addressesMatch(recovered, account) && !isValidEIP1271) {
+        console.warn('addKYC unauthorized: signer_mismatch', {
+            account: toHexAddress(account),
+            recovered: toHexAddress(recovered)
+        })
+        return unauthorized(res, 'signer_mismatch')
     }
 
     console.log('File Name : ', req.files)

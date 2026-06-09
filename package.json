@@ -6,8 +6,8 @@
   "scripts": {
     "lint": "eslint --cache ./ --ext .vue --ext .js",
     "lint-fix": "eslint --cache ./ --ext .vue --ext .js --fix",
-    "nodemon": "npx nodemon index.js",
-    "crawl-dev": "npx nodemon crawl.js",
+    "nodemon": "nodemon index.js",
+    "crawl-dev": "nodemon crawl.js",
     "server-dev": "npm run nodemon",
     "client-dev": "cross-env NODE_ENV=development webpack serve --no-https --hot --host 0.0.0.0 --port 5000",
     "start": "node index.js",
