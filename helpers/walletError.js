@@ -3,7 +3,7 @@
 const LEDGER_REJECT_CODES = [0x6985, 27013, '6985']
 
 const WALLETCONNECT_CANCEL_PATTERN =
-    /connection request reset|user rejected|user closed|cancelled|canceled|modal closed|pairing cancelled|rejected/i
+    /user rejected|user closed|modal closed|pairing cancelled/i
 
 function isWalletConnectUserCancelError (error) {
     if (!error) {

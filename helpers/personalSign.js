@@ -89,7 +89,51 @@ async function recoverPersonalSignAddress (message, signedMessage) {
     return ''
 }
 
+async function isValidEIP1271Signature (account, message, signedMessage) {
+    try {
+        const hexAccount = toHexAddress(account)
+        const code = await web3.eth.getCode(hexAccount)
+        if (!code || code === '0x' || code === '0x0') {
+            return false
+        }
+
+        const msgHash = ethUtil.hashPersonalMessage(Buffer.from(message))
+        const magicValue = '0x1626ba7e'
+        
+        // signature may need normalization
+        const variants = signatureVariants(signedMessage)
+        
+        for (const variant of variants) {
+            const data = web3.eth.abi.encodeFunctionCall({
+                name: 'isValidSignature',
+                type: 'function',
+                inputs: [
+                    { type: 'bytes32', name: '_hash' },
+                    { type: 'bytes', name: '_signature' }
+                ]
+            }, [
+                '0x' + msgHash.toString('hex'),
+                normalizeHex(variant)
+            ])
+
+            const result = await web3.eth.call({
+                to: hexAccount,
+                data: data
+            })
+
+            if (result.toLowerCase().startsWith(magicValue)) {
+                return true
+            }
+        }
+        return false
+    } catch (e) {
+        console.error('EIP-1271 verification error:', e)
+        return false
+    }
+}
+
 module.exports = {
     toHexAddress,
-    recoverPersonalSignAddress
+    recoverPersonalSignAddress,
+    isValidEIP1271Signature
 }

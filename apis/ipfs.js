@@ -6,7 +6,7 @@ const fs = require('fs')
 const axios = require('axios')
 const FormData = require('form-data')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
-const { recoverPersonalSignAddress } = require('../helpers/personalSign')
+const { recoverPersonalSignAddress, isValidEIP1271Signature } = require('../helpers/personalSign')
 
 const IPFS_API_ADD_URL = 'https://ipfs.xinfin.network/api/v0/add'
 
@@ -135,11 +135,14 @@ router.post('/addKYC', async function (req, res, next) {
     }
 
     if (!addressesMatch(recovered, account)) {
-        console.warn('addKYC unauthorized: signer_mismatch', {
-            account: toHexAddress(account),
-            recovered: toHexAddress(recovered)
-        })
-        return unauthorized(res, 'signer_mismatch')
+        const isValid = await isValidEIP1271Signature(account, message, signedMessage)
+        if (!isValid) {
+            console.warn('addKYC unauthorized: signer_mismatch', {
+                account: toHexAddress(account),
+                recovered: toHexAddress(recovered)
+            })
+            return unauthorized(res, 'signer_mismatch')
+        }
     }
 
     console.log('File Name : ', req.files)
