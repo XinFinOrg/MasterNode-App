@@ -3,15 +3,12 @@ const express = require('express')
 const router = express.Router()
 const path = require('path')
 const fs = require('fs')
-const IpfsClient = require('ipfs-http-client')
+const axios = require('axios')
+const FormData = require('form-data')
 const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const { recoverPersonalSignAddress } = require('../helpers/personalSign')
 
-const xinFinClient = new IpfsClient({
-    host: 'ipfs.xinfin.network',
-    port: 443,
-    protocol: 'https'
-})
+const IPFS_API_ADD_URL = 'https://ipfs.xinfin.network/api/v0/add'
 
 function toHexAddress (address) {
     if (!address || typeof address !== 'string') return ''
@@ -41,6 +38,27 @@ function unauthorized (res, reason) {
         message: 'Unauthorized',
         reason: reason
     })
+}
+
+function addFileToXinfinIpfs (buffer, filename, callback) {
+    const form = new FormData()
+    form.append('file', buffer, {
+        filename: filename || 'kyc.pdf',
+        contentType: 'application/pdf',
+        knownLength: buffer.length
+    })
+
+    axios.post(IPFS_API_ADD_URL, form, {
+        headers: form.getHeaders(),
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+    }).then((response) => {
+        const hash = response.data && response.data.Hash
+        if (!hash) {
+            return callback(new Error('IPFS API did not return a hash'))
+        }
+        callback(null, [{ hash: hash }])
+    }).catch(callback)
 }
 
 if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
@@ -139,7 +157,7 @@ router.post('/addKYC', async function (req, res, next) {
         })
     }
 
-    xinFinClient.add(imageFile.data, async (err, ipfsHash) => {
+    addFileToXinfinIpfs(imageFile.data, imageFile.name, async (err, ipfsHash) => {
         if (err != null) {
             console.error('Some error occured while adding KYC at /addKYC: ', err)
             return res.status(500).send(err)

@@ -573,24 +573,46 @@ export default {
                         this.provider ||
                         store.get('network')
                     let signerAccount
+                    const storedAccount = this.account ||
+                        store.get('address') ||
+                        this.$store.state.address ||
+                        ''
+
                     if (network === 'ledger' || network === 'trezor') {
                         signerAccount = this.toRpcAddress(
                             await this.getAccount() ||
-                            this.account ||
-                            store.get('address') ||
+                            storedAccount ||
                             ''
                         ).toLowerCase()
                     } else {
                         signerAccount = this.toRpcAddress(
-                            this.account || store.get('address') || (await this.getAccount()) || ''
+                            storedAccount ||
+                            await this.getAccount() ||
+                            ''
                         ).toLowerCase()
                     }
-                    if (!signerAccount) {
+
+                    if (!signerAccount || signerAccount === '0x') {
                         throw new Error('No wallet account found. Please log in again.')
                     }
                     const now = new Date().toISOString()
                     const message = `[XDCmaster KYC ${now}] Upload KYC for ${signerAccount}`
-                    const signedMessage = await this.signPersonalMessage(message, signerAccount)
+                    let signedMessage
+                    if (network === 'ledger' || network === 'trezor') {
+                        signedMessage = await this.signMessage(message)
+                    } else if (network === 'connect-wallet') {
+                        signedMessage = await this.signPersonalMessage(message, signerAccount)
+                    } else {
+                        try {
+                            signedMessage = await this.web3.eth.personal.sign(
+                                message,
+                                signerAccount,
+                                ''
+                            )
+                        } catch (e) {
+                            signedMessage = await this.web3.eth.sign(message, signerAccount)
+                        }
+                    }
 
                     formData.append('filename', this.KYC.file, this.KYC.file.name)
                     formData.append('account', signerAccount)
@@ -609,32 +631,96 @@ export default {
                         }
                     })
                     const contract = self.XDCValidator
-                    const readWeb3 = (this.getChainReadWeb3 && this.getChainReadWeb3()) || this.web3
-                    const currentGasPrice = readWeb3.utils.toBN(await readWeb3.eth.getGasPrice())
-                    const gasPrice = currentGasPrice.muln(14).divn(10)
-                    const txOptions = {
-                        gasPrice: readWeb3.utils.toHex(gasPrice),
-                        gas: readWeb3.utils.toHex(3000000),
-                        gasLimit: readWeb3.utils.toHex(3000000)
+                    if (!self.gasPrice) {
+                        self.gasPrice = await self.web3.eth.getGasPrice()
                     }
                     if (network === 'ledger' || network === 'trezor') {
+                        const txOptions = {
+                            gasPrice: self.web3.utils.toHex(self.gasPrice),
+                            gas: self.web3.utils.toHex(self.chainConfig.gas),
+                            gasLimit: self.web3.utils.toHex(self.chainConfig.gas)
+                        }
                         await this.sendHardwareWalletTransaction(
                             contract.methods.uploadKYC(data.hash),
                             txOptions
                         )
                     } else {
-                        const fromAccount = this.toRpcAddress(
-                            this.account || store.get('address') || (await this.getAccount()) || ''
-                        ).toLowerCase()
-                        const chainId = this.chainConfig.networkId
-                        const txParams = Object.assign(
-                            { from: fromAccount, chainId: chainId },
-                            txOptions
-                        )
-                        await this.sendContractTransaction(
-                            contract.methods.uploadKYC(data.hash),
-                            txParams
-                        )
+                        const providerAccounts = network === 'custom'
+                            ? await self.web3.eth.getAccounts()
+                            : []
+
+                        let account = signerAccount
+
+                        if (network === 'custom' && providerAccounts && providerAccounts.length) {
+                            account = this.toRpcAddress(providerAccounts[0]).toLowerCase()
+                        }
+
+                        if (!account || account === '0x') {
+                            throw new Error('No transaction sender found. Please log in again.')
+                        }
+
+                        const uploadKYCMethod = contract.methods.uploadKYC(data.hash)
+
+                        const estimatedGas = await uploadKYCMethod.estimateGas({
+                            from: account
+                        })
+
+                        const gas = Math.ceil(Number(estimatedGas) * 1.2)
+
+                        const balanceWei = await self.web3.eth.getBalance(account)
+                        const estimatedFeeWei = new BigNumber(gas).multipliedBy(self.gasPrice)
+
+                        /* console.log('KYC upload tx debug:', {
+                            network,
+                            signerAccount,
+                            providerAccounts,
+                            txFrom: account,
+                            balance: new BigNumber(balanceWei).div(10 ** 18).toString(10),
+                            gasPrice: self.gasPrice,
+                            estimatedGas,
+                            gas,
+                            estimatedFee: estimatedFeeWei.div(10 ** 18).toString(10)
+                        }) */
+
+                        if (new BigNumber(balanceWei).isLessThan(estimatedFeeWei)) {
+                            throw new Error(
+                                `Not enough XDC for transaction fee. Sender ${account} has ` +
+                                `${new BigNumber(balanceWei).div(10 ** 18).toString(10)} XDC, ` +
+                                `required fee is approximately ${estimatedFeeWei.div(10 ** 18).toString(10)} XDC.`
+                            )
+                        }
+
+                        const txParams = {
+                            from: account,
+                            gasPrice: self.web3.utils.toHex(self.gasPrice),
+                            gas: self.web3.utils.toHex(gas)
+                        }
+                        await new Promise((resolve, reject) => {
+                            let settled = false
+                            const done = (result) => {
+                                if (settled) {
+                                    return
+                                }
+                                settled = true
+                                resolve(result)
+                            }
+                            const fail = (err) => {
+                                if (settled) {
+                                    return
+                                }
+                                settled = true
+                                reject(err)
+                            }
+                            uploadKYCMethod.send(txParams)
+                                .once('error', fail)
+                                .once('receipt', done)
+                                .on('transactionHash', (txHash) => {
+                                    if (self.waitForTransactionReceipt) {
+                                        self.waitForTransactionReceipt(txHash).then(done).catch(fail)
+                                    }
+                                })
+                                .catch(fail)
+                        })
                     }
                     await new Promise(resolve => setTimeout(resolve, 2000))
                     await this.getKYCStatus(signerAccount)
