@@ -25,6 +25,44 @@ function normalizeSortField (sortBy) {
     return sortBy
 }
 
+router.get('/getBalance/:address', async (req, res, next) => {
+    try {
+        const address = req.params.address
+        const rpcAddr = address.toLowerCase().startsWith('xdc') ? '0x' + address.substring(3) : address
+        const xdcAddr = 'xdc' + rpcAddr.substring(2)
+
+        let balance0x = '0'
+        let balanceXdc = '0'
+        let success = false
+
+        try {
+            balance0x = await web3.eth.getBalance(rpcAddr)
+            success = true
+        } catch (e) {
+            console.error(`[getBalance] Error for rpcAddr ${rpcAddr}:`, e)
+        }
+
+        const isZeroBalance0x = !balance0x || balance0x === '0' || balance0x === '0x0'
+        if (!success || isZeroBalance0x) {
+            try {
+                balanceXdc = await web3.eth.getBalance(xdcAddr)
+                success = true
+            } catch (e) {
+                console.error(`[getBalance] Error for xdcAddr ${xdcAddr}:`, e)
+            }
+        }
+
+        if (!success) {
+            return res.status(500).json({ error: 'Failed to fetch balance from RPC' })
+        }
+
+        const balance = (balance0x && balance0x !== '0' && balance0x !== '0x0') ? balance0x : balanceXdc
+        return res.json({ balance })
+    } catch (err) {
+        return next(err)
+    }
+})
+
 router.get('/:voter/candidates', [
     query('limit')
         .isInt({ min: 0, max: 200 }).optional().withMessage('limit should greater than 0 and less than 200'),
@@ -279,7 +317,7 @@ router.post('/verifyTx', [
 
                         // Fallback to XDC balance if 0x balance is empty or strictly zero
                         const balance = (balance0x && balance0x !== '0') ? balance0x : balanceXdc
-                        
+
                         if (balance) {
                             const convertedBalanc = new BigNumber(balance).div(10 ** 18)
                             const convertedAmount = new BigNumber(amount)

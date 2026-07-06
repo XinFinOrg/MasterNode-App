@@ -193,10 +193,6 @@ async function updateCandidateInfo (candidate, storedLatestSignedBlock = 0, prev
         // logger.debug('Update candidate %s capacity %s %s', candidate, String(capacity), status)
         if (candidate !== 'xdc0000000000000000000000000000000000000000') {
             // check current status
-            const candateInDB = await db.Candidate.findOne({
-                smartContractAddress: config.get('blockchain.validatorAddress'),
-                candidate: candidate
-            }) || {}
 
             let newStatus = prevStatus || 'STANDBY'
             if (status !== null) {

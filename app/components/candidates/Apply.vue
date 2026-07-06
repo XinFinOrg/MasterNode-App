@@ -617,7 +617,7 @@ export default {
                     if (!self.gasPrice) {
                         self.gasPrice = await self.web3.eth.getGasPrice()
                     }
-                    
+
                     let preflightAccount = signerAccount
                     if (network === 'custom') {
                         const providerAccounts = await self.web3.eth.getAccounts()

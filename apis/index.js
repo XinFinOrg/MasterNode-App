@@ -11,5 +11,6 @@ router.use('/api/transactions', require('./transactions'))
 router.use('/api/search', require('./search'))
 router.use('/api/auth', require('./auth'))
 router.use('/api/ipfs', require('./ipfs'))
+router.use('/api/enterprise', require('./enterprise'))
 
 module.exports = router
