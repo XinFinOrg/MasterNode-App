@@ -277,8 +277,11 @@ async function getCurrentCandidates () {
             return
         }
 
-        const prevCandidates = await db.Candidate.find({})
-        await db.Candidate.remove({})
+        const smartContractAddress = config.get('blockchain.validatorAddress')
+        const storedCandidateAddresses = candidates.map(candidate =>
+            candidate.replace('0x', 'xdc').toLowerCase()
+        )
+        const prevCandidates = await db.Candidate.find({ smartContractAddress })
         let map = candidates.map(async (candidate) => {
             const storedDetails = prevCandidates.find((e) => e.candidate === candidate.replace('0x', 'xdc').toLowerCase())
 
@@ -306,7 +309,14 @@ async function getCurrentCandidates () {
             await Promise.all(m)
             return updateCandidateInfo(candidate, storedLatestSignedBlock, prevStatus)
         })
-        return Promise.all(map).catch(e => logger.info('getCurrentCandidates %s', e))
+        const result = await Promise.all(map)
+
+        await db.Candidate.deleteMany({
+            smartContractAddress,
+            candidate: { $nin: storedCandidateAddresses }
+        })
+
+        return result
     } catch (e) {
         logger.info('getCurrentCandidates2 %s', e)
     }
