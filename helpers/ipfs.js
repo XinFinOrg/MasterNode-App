@@ -53,12 +53,12 @@ async function addFileToXinfinIpfs (buffer, filename, callback) {
                     maxContentLength: Infinity,
                     timeout: 60000
                 })
-                
+
                 const hash = response.data && response.data.Hash
                 if (!hash) {
                     throw new Error('IPFS API did not return a hash')
                 }
-                
+
                 return callback(null, [{ hash: hash }])
             } catch (error) {
                 lastError = error
@@ -76,7 +76,7 @@ async function addFileToXinfinIpfs (buffer, filename, callback) {
                 }
             }
         }
-        
+
         // If we exhausted all retries
         callback(lastError)
     } catch (error) {

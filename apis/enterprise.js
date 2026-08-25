@@ -4,8 +4,6 @@ const router = express.Router()
 const crypto = require('crypto')
 const config = require('config')
 const db = require('../models/mongodb')
-const axios = require('axios')
-const FormData = require('form-data')
 
 const { addFileToXinfinIpfs } = require('../helpers/ipfs')
 
