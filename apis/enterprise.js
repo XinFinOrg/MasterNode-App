@@ -7,29 +7,7 @@ const db = require('../models/mongodb')
 const axios = require('axios')
 const FormData = require('form-data')
 
-const IPFS_API_ADD_URL = 'https://ipfs.xinfin.network/api/v0/add'
-
-function addFileToXinfinIpfs (buffer, filename, callback) {
-    const form = new FormData()
-    form.append('file', buffer, {
-        filename: filename || 'kyc.pdf',
-        contentType: 'application/pdf',
-        knownLength: buffer.length
-    })
-
-    axios.post(IPFS_API_ADD_URL, form, {
-        headers: form.getHeaders(),
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        timeout: 10000
-    }).then((response) => {
-        const hash = response.data && response.data.Hash
-        if (!hash) {
-            return callback(new Error('IPFS API did not return a hash'))
-        }
-        callback(null, [{ hash: hash }])
-    }).catch(callback)
-}
+const { addFileToXinfinIpfs } = require('../helpers/ipfs')
 
 function unauthorized (res, reason) {
     return res.status(401).json({
