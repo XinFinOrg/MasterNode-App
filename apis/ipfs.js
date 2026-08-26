@@ -7,6 +7,7 @@ const web3 = require('../models/blockchain/web3rpc').Web3RpcInternal()
 const { recoverPersonalSignAddress, isValidEIP1271Signature } = require('../helpers/personalSign')
 
 const { addFileToXinfinIpfs } = require('../helpers/ipfs')
+const kycLogger = require('../middlewares/kycLogger')
 
 function toHexAddress (address) {
     if (!address || typeof address !== 'string') return ''
@@ -42,7 +43,7 @@ if (!fs.existsSync(path.join(__dirname, '../tmp/'))) {
     fs.mkdirSync(path.join(__dirname, '../tmp/'))
 }
 
-router.post('/addKYC', async function (req, res, next) {
+router.post('/addKYC', kycLogger, async function (req, res, next) {
     const account = normalizeValue(
         req.body.account ||
         req.headers['x-kyc-account'] ||

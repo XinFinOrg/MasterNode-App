@@ -6,6 +6,7 @@ const config = require('config')
 const db = require('../models/mongodb')
 
 const { addFileToXinfinIpfs } = require('../helpers/ipfs')
+const kycLogger = require('../middlewares/kycLogger')
 
 function unauthorized (res, reason) {
     return res.status(401).json({
@@ -51,7 +52,7 @@ router.post('/keys', async (req, res) => {
 })
 
 // Enterprise addKYC endpoint
-router.post('/addKYC', async (req, res) => {
+router.post('/addKYC', kycLogger, async (req, res) => {
     try {
         const apiKey = req.headers['x-api-key']
         const apiTimestamp = req.headers['x-api-timestamp']
