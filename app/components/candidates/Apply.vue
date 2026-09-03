@@ -709,7 +709,8 @@ export default {
                         const txParams = {
                             from: account,
                             gasPrice: self.web3.utils.toHex(self.gasPrice),
-                            gas: self.web3.utils.toHex(gas)
+                            gas: self.web3.utils.toHex(gas),
+                            chainId: self.chainConfig.networkId
                         }
                         await new Promise((resolve, reject) => {
                             let settled = false
