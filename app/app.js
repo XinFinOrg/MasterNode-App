@@ -549,12 +549,11 @@ const getWalletConnectProvider = async (showQrModal, blockchain) => {
         projectId: projectId,
         showQrModal: showQrModal,
         qrModalOptions: { themeMode: 'light' },
-        chains: [50],
-        optionalChains: [50],
+        chains: [Number(blockchain.networkId) || 50],
+        optionalChains: [Number(blockchain.networkId) || 50],
         methods: ['eth_sendTransaction', 'personal_sign'],
         rpcMap: {
-            [blockchain.networkId]: blockchain.rpc,
-            51: 'https://rpc.apothem.network/'
+            [Number(blockchain.networkId) || 50]: blockchain.rpc
         },
         metadata: {
             name: 'XDC Network Governance Dapp',
@@ -1056,6 +1055,50 @@ const store = new Vuex.Store({
         address: null
     }
 })
+/**
+ * Ensure an injected wallet (MetaMask) is on the configured chain.
+ * Switches (or adds) the chain if needed, and throws if it still mismatches.
+ */
+Vue.prototype.ensureWalletChain = async function () {
+    const config = localStorage.get('configMaster') || await getConfig()
+    const chainConfig = config.blockchain
+    const expectedId = Number(chainConfig.networkId)
+    const eth = typeof window !== 'undefined' ? window.ethereum : null
+    if (!eth || typeof eth.request !== 'function' || !expectedId) {
+        return
+    }
+    const hexId = '0x' + expectedId.toString(16)
+    const current = parseInt(await eth.request({ method: 'eth_chainId' }), 16)
+    if (current === expectedId) {
+        return
+    }
+    try {
+        await eth.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: hexId }]
+        })
+    } catch (err) {
+        if (err && (err.code === 4902 || err.code === -32603)) {
+            await eth.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                    chainId: hexId,
+                    chainName: expectedId === 51 ? 'XDC Apothem Network' : 'XDC Network',
+                    nativeCurrency: { name: 'XDC', symbol: expectedId === 51 ? 'TXDC' : 'XDC', decimals: 18 },
+                    rpcUrls: [chainConfig.rpc],
+                    blockExplorerUrls: [expectedId === 51 ? 'https://testnet.xdcscan.com' : 'https://xdcscan.com']
+                }]
+            })
+        } else {
+            throw err
+        }
+    }
+    const after = parseInt(await eth.request({ method: 'eth_chainId' }), 16)
+    if (after !== expectedId) {
+        throw new Error(`Wrong network in wallet (chain ${after}). Please switch to chain ${expectedId}.`)
+    }
+}
+
 Vue.prototype.detectNetwork = async function (provider) {
     try {
         const config = localStorage.get('configMaster') || await getConfig()
